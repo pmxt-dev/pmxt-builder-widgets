@@ -1,0 +1,19 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "price-chip",
+  "type": "registry:component",
+  "title": "Price Chip",
+  "description": "Price Chip widget for PMXT prediction markets.",
+  "dependencies": [],
+  "registryDependencies": [
+    "https://widgets.pmxt.dev/r/pmxt-core.json"
+  ],
+  "files": [
+    {
+      "path": "registry/pmxt/price-chip/price-chip.tsx",
+      "content": "import { formatPercent, formatPrice } from '@/lib/pmxt/format';\nimport { TrendDownIcon, TrendUpIcon } from '@/lib/pmxt/icons';\n\nexport interface PriceChipProps {\n    /** Outcome price, 0.0–1.0. */\n    price: number | null | undefined;\n    /** 24h absolute price change (e.g. 0.03 = +3pts). */\n    change24h?: number | null;\n    /** Render as percentage probability instead of cents. */\n    asPercent?: boolean;\n    label?: string;\n    className?: string;\n}\n\n/** Price pill with optional 24h trend arrow. */\nexport function PriceChip({\n    price,\n    change24h,\n    asPercent = false,\n    label,\n    className = '',\n}: PriceChipProps) {\n    const hasChange = change24h != null && Number.isFinite(change24h) && change24h !== 0;\n    const up = (change24h ?? 0) > 0;\n    return (\n        <span\n            className={`inline-flex items-center gap-1.5 rounded-md bg-zinc-100 px-2 py-1 font-mono text-xs font-semibold text-zinc-900 ${className}`}\n        >\n            {label && (\n                <span className=\"font-sans text-[10px] font-medium uppercase tracking-wide text-zinc-500\">\n                    {label}\n                </span>\n            )}\n            {asPercent ? formatPercent(price) : formatPrice(price)}\n            {hasChange && (\n                <span\n                    className={`inline-flex items-center gap-0.5 text-[10px] ${\n                        up ? 'text-emerald-600' : 'text-red-600'\n                    }`}\n                >\n                    {up ? <TrendUpIcon /> : <TrendDownIcon />}\n                    {Math.abs((change24h ?? 0) * 100).toFixed(1)}\n                </span>\n            )}\n        </span>\n    );\n}\n",
+      "type": "registry:component",
+      "target": "components/pmxt/price-chip.tsx"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "name": "pmxt-builder-widgets",
+  "private": true,
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm --filter demo dev",
+    "test": "pnpm --filter pmxt-widgets test",
+    "typecheck": "pnpm -r typecheck",
+    "registry": "pnpm --filter demo registry"
+  },
+  "packageManager": "pnpm@10.19.0"
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "venue-badge",
+  "type": "registry:component",
+  "title": "Venue Badge",
+  "description": "Venue Badge widget for PMXT prediction markets.",
+  "dependencies": [],
+  "registryDependencies": [
+    "https://widgets.pmxt.dev/r/pmxt-core.json"
+  ],
+  "files": [
+    {
+      "path": "registry/pmxt/venue-badge/venue-badge.tsx",
+      "content": "import { venueLabel } from '@/lib/pmxt/format';\nimport { venueTheme } from '@/lib/pmxt/venues';\nimport type { CatalogVenue } from '@/lib/pmxt/types';\n\nexport interface VenueBadgeProps {\n    venue: CatalogVenue;\n    /** Compact renders just the colored dot + short name. */\n    compact?: boolean;\n    className?: string;\n}\n\n/** Small colored chip identifying a prediction-market venue. */\nexport function VenueBadge({ venue, compact = false, className = '' }: VenueBadgeProps) {\n    const theme = venueTheme(venue);\n    const label = venueLabel(venue);\n    return (\n        <span\n            className={`inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-[10px] font-medium text-zinc-700 ${className}`}\n        >\n            <span className={`size-1.5 rounded-full ${theme.dot}`} />\n            {compact ? label.slice(0, 4) : label}\n        </span>\n    );\n}\n",
+      "type": "registry:component",
+      "target": "components/pmxt/venue-badge.tsx"
+    }
+  ]
+}

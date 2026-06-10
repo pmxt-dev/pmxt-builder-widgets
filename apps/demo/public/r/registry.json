@@ -1,0 +1,121 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "pmxt-widgets",
+  "homepage": "https://widgets.pmxt.dev",
+  "items": [
+    {
+      "name": "pmxt-core",
+      "type": "registry:lib",
+      "title": "PMXT Core",
+      "description": "PMXT client, provider, hooks, and shared utilities for prediction market widgets."
+    },
+    {
+      "name": "balance-card",
+      "type": "registry:component",
+      "title": "Balance Card",
+      "description": "Balance Card widget for PMXT prediction markets."
+    },
+    {
+      "name": "cross-venue-compare",
+      "type": "registry:component",
+      "title": "Cross Venue Compare",
+      "description": "Cross Venue Compare widget for PMXT prediction markets."
+    },
+    {
+      "name": "event-card",
+      "type": "registry:component",
+      "title": "Event Card",
+      "description": "Event Card widget for PMXT prediction markets."
+    },
+    {
+      "name": "execution-quote",
+      "type": "registry:component",
+      "title": "Execution Quote",
+      "description": "Execution Quote widget for PMXT prediction markets."
+    },
+    {
+      "name": "market-card",
+      "type": "registry:component",
+      "title": "Market Card",
+      "description": "Market Card widget for PMXT prediction markets."
+    },
+    {
+      "name": "market-search",
+      "type": "registry:component",
+      "title": "Market Search",
+      "description": "Market Search widget for PMXT prediction markets."
+    },
+    {
+      "name": "market-ticker",
+      "type": "registry:component",
+      "title": "Market Ticker",
+      "description": "Market Ticker widget for PMXT prediction markets."
+    },
+    {
+      "name": "market-widget",
+      "type": "registry:component",
+      "title": "Market Widget",
+      "description": "Market Widget widget for PMXT prediction markets."
+    },
+    {
+      "name": "open-orders-table",
+      "type": "registry:component",
+      "title": "Open Orders Table",
+      "description": "Open Orders Table widget for PMXT prediction markets."
+    },
+    {
+      "name": "order-book",
+      "type": "registry:component",
+      "title": "Order Book",
+      "description": "Order Book widget for PMXT prediction markets."
+    },
+    {
+      "name": "order-ticket",
+      "type": "registry:component",
+      "title": "Order Ticket",
+      "description": "Order Ticket widget for PMXT prediction markets."
+    },
+    {
+      "name": "positions-table",
+      "type": "registry:component",
+      "title": "Positions Table",
+      "description": "Positions Table widget for PMXT prediction markets."
+    },
+    {
+      "name": "price-chart",
+      "type": "registry:component",
+      "title": "Price Chart",
+      "description": "Price Chart widget for PMXT prediction markets."
+    },
+    {
+      "name": "price-chip",
+      "type": "registry:component",
+      "title": "Price Chip",
+      "description": "Price Chip widget for PMXT prediction markets."
+    },
+    {
+      "name": "recent-trades",
+      "type": "registry:component",
+      "title": "Recent Trades",
+      "description": "Recent Trades widget for PMXT prediction markets."
+    },
+    {
+      "name": "trade-history",
+      "type": "registry:component",
+      "title": "Trade History",
+      "description": "Trade History widget for PMXT prediction markets."
+    },
+    {
+      "name": "trending-markets",
+      "type": "registry:component",
+      "title": "Trending Markets",
+      "description": "Trending Markets widget for PMXT prediction markets."
+    },
+    {
+      "name": "venue-badge",
+      "type": "registry:component",
+      "title": "Venue Badge",
+      "description": "Venue Badge widget for PMXT prediction markets."
+    }
+  ]
+}

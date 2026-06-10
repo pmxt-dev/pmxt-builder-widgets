@@ -1,0 +1,25 @@
+{
+    "name": "demo",
+    "private": true,
+    "scripts": {
+        "dev": "next dev --turbopack -p 3017",
+        "build": "next build",
+        "start": "next start",
+        "typecheck": "tsc --noEmit",
+        "registry": "node scripts/build-registry.mjs"
+    },
+    "dependencies": {
+        "next": "^16.1.1",
+        "pmxt-widgets": "workspace:*",
+        "react": "^19.2.0",
+        "react-dom": "^19.2.0"
+    },
+    "devDependencies": {
+        "@tailwindcss/postcss": "^4",
+        "@types/node": "^24",
+        "@types/react": "^19",
+        "@types/react-dom": "^19",
+        "tailwindcss": "^4",
+        "typescript": "^5.7.0"
+    }
+}

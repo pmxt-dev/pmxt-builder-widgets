@@ -1,0 +1,20 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "trending-markets",
+  "type": "registry:component",
+  "title": "Trending Markets",
+  "description": "Trending Markets widget for PMXT prediction markets.",
+  "dependencies": [],
+  "registryDependencies": [
+    "https://widgets.pmxt.dev/r/pmxt-core.json",
+    "https://widgets.pmxt.dev/r/market-card.json"
+  ],
+  "files": [
+    {
+      "path": "registry/pmxt/trending-markets/trending-markets.tsx",
+      "content": "'use client';\n\nimport { useState } from 'react';\nimport { useEvents } from '@/lib/pmxt/hooks';\nimport { venueLabel } from '@/lib/pmxt/format';\nimport { SpinnerIcon } from '@/lib/pmxt/icons';\nimport type { CatalogVenue, PmxtEvent, PmxtMarket, PmxtOutcome } from '@/lib/pmxt/types';\nimport { MarketCard } from '@/components/pmxt/market-card';\n\nexport interface TrendingMarketsProps {\n    /** Venue tabs to offer (default polymarket + kalshi). */\n    venues?: CatalogVenue[];\n    /** Events to fetch per venue (default 6). */\n    limit?: number;\n    onPickOutcome?: (\n        market: PmxtMarket,\n        outcome: PmxtOutcome,\n        venue: CatalogVenue,\n        event: PmxtEvent,\n    ) => void;\n    className?: string;\n}\n\n/** Top markets by volume with venue tabs. */\nexport function TrendingMarkets({\n    venues = ['polymarket', 'kalshi'],\n    limit = 6,\n    onPickOutcome,\n    className = '',\n}: TrendingMarketsProps) {\n    const [venue, setVenue] = useState<CatalogVenue>(venues[0] ?? 'polymarket');\n    const { data, loading, error } = useEvents(venue, { limit });\n    const events = data ?? [];\n\n    return (\n        <section className={className}>\n            {venues.length > 1 && (\n                <div className=\"mb-3 flex gap-1.5 rounded-lg bg-zinc-100 p-1\">\n                    {venues.map((v) => (\n                        <button\n                            key={v}\n                            type=\"button\"\n                            onClick={() => setVenue(v)}\n                            className={`flex-1 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${\n                                venue === v\n                                    ? 'bg-white text-zinc-950 shadow-sm'\n                                    : 'text-zinc-500 hover:text-zinc-950'\n                            }`}\n                        >\n                            {venueLabel(v)}\n                        </button>\n                    ))}\n                </div>\n            )}\n\n            {loading && (\n                <div className=\"flex items-center justify-center gap-2 rounded-xl border border-zinc-200/80 bg-white py-10 text-xs text-zinc-500\">\n                    <SpinnerIcon /> Loading {venueLabel(venue)} markets…\n                </div>\n            )}\n            {error && !loading && (\n                <div className=\"rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700\">\n                    {error}\n                </div>\n            )}\n\n            <div className=\"grid gap-3\">\n                {!loading &&\n                    events.map((event) => {\n                        const market = event.markets[0];\n                        if (!market) return null;\n                        return (\n                            <MarketCard\n                                key={event.id}\n                                market={{ ...market, title: market.title || event.title }}\n                                venue={venue}\n                                onPickOutcome={\n                                    onPickOutcome\n                                        ? (m, o) => onPickOutcome(m, o, venue, event)\n                                        : undefined\n                                }\n                            />\n                        );\n                    })}\n            </div>\n        </section>\n    );\n}\n",
+      "type": "registry:component",
+      "target": "components/pmxt/trending-markets.tsx"
+    }
+  ]
+}
