@@ -64,11 +64,13 @@ All widgets are self-contained: React 18+, Tailwind classes, zero runtime depend
 
 ## Trading model
 
-Trading is live and non-custodial (Polymarket + Opinion settle on PMXT escrow):
+Trading is live and non-custodial (Polymarket + Opinion settle on PMXT escrow), using the documented hosted trading API — the same `/v0` surface the official `pmxtjs`/`pmxt` SDKs use:
 
-1. `OrderTicket` quotes via `POST /trade/build-order` → returns EIP-712 `typed_data`
+1. `OrderTicket` quotes via `POST /v0/trade/build-order` → returns a `built_order_id`, a quote, and EIP-712 `typed_data`
 2. The user signs in their wallet (injected by default; bring your own signer via `PmxtProvider`'s `wallet` prop — wagmi, Privy, embedded wallets all fit the 1-method `PmxtSigner` interface)
-3. `POST /trade/submit-order` executes; the widget renders filled / resting / pending / failed states
+3. `POST /v0/trade/submit-order` (`built_order_id` + `signature`) executes; the widget renders filled / resting / pending / failed states
+
+Account reads use `GET /v0/user/{address}/balances|positions|trades` and `GET /v0/orders/open`; cancels run the signed two-step `/v0/orders/cancel/build` → `/v0/orders/cancel` flow.
 
 Funds come from the user's PMXT escrow balance — deposit at [pmxt.dev/dashboard/wallet](https://pmxt.dev/dashboard/wallet).
 

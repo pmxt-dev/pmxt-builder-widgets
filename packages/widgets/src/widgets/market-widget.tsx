@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { formatPrice } from '../lib/format';
 import { venueTheme } from '../lib/venues';
 import { useOrderBook } from '../hooks';
-import type { PickedMarket, SubmitOrderResponse } from '../lib/types';
+import type { PickedMarket, PmxtOrder } from '../lib/types';
 import { VenueBadge } from './venue-badge';
 import { PriceChart } from './price-chart';
 import { OrderBookWidget } from './order-book';
@@ -14,7 +14,7 @@ export interface MarketWidgetProps {
     market: PickedMarket;
     /** Hide the trading panel for a read-only embed. */
     readOnly?: boolean;
-    onDone?: (result: SubmitOrderResponse) => void;
+    onDone?: (order: PmxtOrder) => void;
     className?: string;
 }
 

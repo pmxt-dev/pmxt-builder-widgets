@@ -5,7 +5,7 @@ import { useOpenOrders } from '../hooks';
 import { usePmxt, usePmxtWallet } from '../provider';
 import { formatPrice, formatShares, formatTimeAgo } from '../lib/format';
 import { SpinnerIcon } from '../lib/icons';
-import type { OpenOrder } from '../lib/types';
+import type { PmxtOrder } from '../lib/types';
 
 export interface OpenOrdersTableProps {
     /** Address to show orders for; defaults to the connected wallet. */
@@ -13,7 +13,7 @@ export interface OpenOrdersTableProps {
     className?: string;
 }
 
-/** Resting limit orders with a per-row sign-and-cancel flow. */
+/** Resting limit orders with a per-row sign-and-cancel flow (/v0 contract). */
 export function OpenOrdersTable({ address, className = '' }: OpenOrdersTableProps) {
     const wallet = usePmxtWallet();
     const resolved = address ?? wallet.address;
@@ -54,7 +54,7 @@ export function OpenOrdersTable({ address, className = '' }: OpenOrdersTableProp
                 <ul className="divide-y divide-zinc-100">
                     {orders.map((order) => (
                         <OrderRow
-                            key={order.task_id}
+                            key={order.id}
                             order={order}
                             address={resolved}
                             onCancelled={refetch}
@@ -71,7 +71,7 @@ function OrderRow({
     address,
     onCancelled,
 }: {
-    order: OpenOrder;
+    order: PmxtOrder;
     address: `0x${string}`;
     onCancelled: () => void;
 }) {
@@ -89,19 +89,18 @@ function OrderRow({
         setRowError(null);
         try {
             const build = await client.buildCancel({
-                task_id: order.task_id,
+                order_id: order.id,
                 user_address: address,
             });
             const sig = await signer.signTypedData(build.typed_data);
+            // Opinion cancels carry a second BSC pull leg to sign.
             const pullSig = build.pull_typed_data
                 ? await signer.signTypedData(build.pull_typed_data)
                 : undefined;
             await client.cancelOrder({
-                task_id: order.task_id,
-                user_address: address,
-                cancel_signature: sig,
-                cancel_pull_signature: pullSig,
-                cancel_deadline: build.deadline,
+                cancel_id: build.cancel_id,
+                signature: sig,
+                pull_signature: pullSig,
             });
             onCancelled();
         } catch (err: unknown) {
@@ -111,30 +110,40 @@ function OrderRow({
         }
     }
 
+    const sideClass =
+        order.side === 'buy'
+            ? 'text-emerald-700'
+            : order.side === 'sell'
+              ? 'text-red-700'
+              : 'text-zinc-500';
+    const totalShares = order.amount ?? order.filled + order.remaining;
+
     return (
         <li className="px-4 py-2.5">
             <div className="flex items-center gap-3">
                 <span
-                    className={`w-9 shrink-0 text-xs font-semibold uppercase ${
-                        order.side === 'buy' ? 'text-emerald-700' : 'text-red-700'
-                    }`}
+                    className={`w-9 shrink-0 text-xs font-semibold uppercase ${sideClass}`}
                 >
-                    {order.side}
+                    {order.side ?? '—'}
                 </span>
                 <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm text-zinc-950">
-                        {order.market_title ?? 'Unknown market'}
+                    <div className="flex items-center gap-1.5">
+                        <span className="truncate text-sm text-zinc-950">
+                            {order.market_title ?? `${order.id.slice(0, 8)}…`}
+                        </span>
+                        <span className="shrink-0 rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-600">
+                            {order.status}
+                        </span>
                     </div>
                     <div className="text-[11px] text-zinc-500">
                         <span className="font-mono">
-                            {formatShares(order.shares_filled)}/
-                            {formatShares(order.shares_total)}
+                            {formatShares(order.filled)}/{formatShares(totalShares)}
                         </span>{' '}
-                        filled · {formatTimeAgo(order.created_at)}
+                        filled · {formatTimeAgo(order.timestamp)}
                     </div>
                 </div>
                 <div className="shrink-0 font-mono text-sm text-zinc-900">
-                    {formatPrice(order.limit_price)}
+                    {formatPrice(order.price)}
                 </div>
                 <button
                     type="button"

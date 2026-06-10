@@ -11,20 +11,21 @@ export const dynamic = 'force-dynamic';
  * Strict allowlist per method; everything else is a 404.
  */
 const POST_PATHS = new Set([
-    'trade/build-order',
-    'trade/submit-order',
-    'orders/cancel/build',
-    'orders/cancel',
+    'v0/trade/build-order',
+    'v0/trade/submit-order',
+    'v0/orders/cancel/build',
+    'v0/orders/cancel',
 ]);
 
-const GET_PATHS = new Set(['orders/open', 'user/escrow-balances']);
+const GET_PATHS = new Set(['v0/orders/open']);
 
-const USER_TRADES_PATTERN = /^user\/trades\/0x[0-9a-fA-F]{40}$/;
+const USER_SCOPED_PATTERN =
+    /^v0\/user\/0x[0-9a-fA-F]{40}\/(balances|positions|trades)$/;
 
 function isAllowed(path: string, method: string): boolean {
     if (method === 'POST') return POST_PATHS.has(path);
     if (method === 'GET') {
-        return GET_PATHS.has(path) || USER_TRADES_PATTERN.test(path);
+        return GET_PATHS.has(path) || USER_SCOPED_PATTERN.test(path);
     }
     return false;
 }

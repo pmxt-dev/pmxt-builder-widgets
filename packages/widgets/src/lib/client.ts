@@ -1,22 +1,22 @@
 import type {
     BuildOrderRequest,
-    BuildOrderResponse,
-    BuildOrderBuyParams,
-    BuildOrderSellParams,
+    BuiltOrder,
+    CancelBuildRequest,
     CancelBuildResponse,
-    CancelOrderResponse,
+    CancelRequest,
     CatalogVenue,
-    EscrowBalances,
     ExecutionPrice,
     MarketCluster,
-    OpenOrder,
     OrderBook,
+    PmxtBalance,
     PmxtEvent,
     PmxtMarket,
+    PmxtOrder,
+    PmxtPosition,
+    PmxtUserTrade,
     PriceCandle,
     PublicTrade,
-    SubmitOrderResponse,
-    UserTrade,
+    SubmitOrderRequest,
 } from './types';
 
 export interface PmxtClientConfig {
@@ -213,79 +213,78 @@ export class PmxtClient {
         return unwrapEnvelope<MarketCluster[]>(raw) ?? [];
     }
 
-    // ---- Trading (PMXT escrow venues) ----------------------------------
+    // ---- Hosted trading (documented /v0 surface) ------------------------
 
-    buildOrder(body: BuildOrderRequest): Promise<BuildOrderResponse> {
-        return this.trade<BuildOrderResponse>('/trade/build-order', {
+    /** `POST /v0/trade/build-order` — returns EIP-712 typed data + a quote. */
+    buildOrder(body: BuildOrderRequest): Promise<BuiltOrder> {
+        return this.trade<BuiltOrder>('/v0/trade/build-order', {
             method: 'POST',
             body: JSON.stringify(body),
         });
     }
 
-    submitOrder(args: {
-        side: 'buy' | 'sell';
-        params: BuildOrderBuyParams | BuildOrderSellParams;
-        signature: `0x${string}`;
-        pull_signature?: `0x${string}`;
-        wait?: boolean;
-    }): Promise<SubmitOrderResponse> {
-        const { side, params, signature, pull_signature, wait = true } = args;
-        const { user, ...rest } = params;
-        const body: Record<string, unknown> = {
-            ...rest,
-            user_address: user,
-            side,
-            signature,
-            wait,
-        };
-        if (pull_signature) body.pull_signature = pull_signature;
-        return this.trade<SubmitOrderResponse>('/trade/submit-order', {
+    /** `POST /v0/trade/submit-order` — submit the signed build by id. */
+    submitOrder(args: SubmitOrderRequest): Promise<PmxtOrder> {
+        const body: SubmitOrderRequest = { wait: true, ...args };
+        return this.trade<PmxtOrder>('/v0/trade/submit-order', {
             method: 'POST',
             body: JSON.stringify(body),
         });
     }
 
-    escrowBalances(address: string): Promise<EscrowBalances> {
-        const params = new URLSearchParams({ address, token_address: 'all' });
-        return this.trade<EscrowBalances>(`/user/escrow-balances?${params}`);
-    }
-
-    async openOrders(address: string): Promise<OpenOrder[]> {
-        const res = await this.trade<{ orders: OpenOrder[] }>(
-            `/orders/open?address=${encodeURIComponent(address)}`,
+    async fetchBalances(address: string): Promise<PmxtBalance[]> {
+        const res = await this.trade<unknown>(
+            `/v0/user/${encodeURIComponent(address)}/balances`,
         );
-        return res.orders ?? [];
+        return toArray<PmxtBalance>(res, 'balances');
     }
 
-    buildCancel(body: {
-        task_id: number;
-        user_address: string;
-    }): Promise<CancelBuildResponse> {
-        return this.trade<CancelBuildResponse>('/orders/cancel/build', {
-            method: 'POST',
-            body: JSON.stringify(body),
-        });
-    }
-
-    cancelOrder(body: {
-        task_id: number;
-        user_address: string;
-        cancel_signature?: `0x${string}`;
-        cancel_pull_signature?: `0x${string}`;
-        cancel_deadline?: number;
-    }): Promise<CancelOrderResponse> {
-        return this.trade<CancelOrderResponse>('/orders/cancel', {
-            method: 'POST',
-            body: JSON.stringify(body),
-        });
-    }
-
-    async userTrades(address: string): Promise<UserTrade[]> {
-        const res = await this.trade<{ trades: UserTrade[] }>(
-            `/user/trades/${address}`,
+    async fetchPositions(address: string): Promise<PmxtPosition[]> {
+        const res = await this.trade<unknown>(
+            `/v0/user/${encodeURIComponent(address)}/positions`,
         );
-        return res.trades ?? [];
+        return toArray<PmxtPosition>(res, 'positions');
     }
+
+    async fetchOpenOrders(address: string): Promise<PmxtOrder[]> {
+        const res = await this.trade<unknown>(
+            `/v0/orders/open?address=${encodeURIComponent(address)}`,
+        );
+        return toArray<PmxtOrder>(res, 'orders');
+    }
+
+    async fetchUserTrades(address: string, limit?: number): Promise<PmxtUserTrade[]> {
+        const params = new URLSearchParams();
+        if (limit) params.set('limit', String(limit));
+        const qs = params.toString();
+        const res = await this.trade<unknown>(
+            `/v0/user/${encodeURIComponent(address)}/trades${qs ? `?${qs}` : ''}`,
+        );
+        return toArray<PmxtUserTrade>(res, 'trades');
+    }
+
+    /** `POST /v0/orders/cancel/build` — returns cancel typed data + cancel_id. */
+    buildCancel(body: CancelBuildRequest): Promise<CancelBuildResponse> {
+        return this.trade<CancelBuildResponse>('/v0/orders/cancel/build', {
+            method: 'POST',
+            body: JSON.stringify(body),
+        });
+    }
+
+    /** `POST /v0/orders/cancel` — submit the signed cancel by id. */
+    cancelOrder(body: CancelRequest): Promise<PmxtOrder> {
+        return this.trade<PmxtOrder>('/v0/orders/cancel', {
+            method: 'POST',
+            body: JSON.stringify(body),
+        });
+    }
+}
+
+/** v0 reads return bare arrays today; tolerate `{key: [...]}` envelopes too. */
+function toArray<T>(raw: unknown, key: string): T[] {
+    if (Array.isArray(raw)) return raw as T[];
+    const wrapped = (raw as Record<string, unknown>)?.[key];
+    return Array.isArray(wrapped) ? (wrapped as T[]) : [];
 }
 
 function normalizeTrade(raw: unknown): PublicTrade | null {

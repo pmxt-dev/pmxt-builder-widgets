@@ -4,15 +4,16 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePmxt } from './provider';
 import type {
     CatalogVenue,
-    EscrowBalances,
     MarketCluster,
-    OpenOrder,
     OrderBook,
+    PmxtBalance,
     PmxtEvent,
     PmxtMarket,
+    PmxtOrder,
+    PmxtPosition,
+    PmxtUserTrade,
     PriceCandle,
     PublicTrade,
-    UserTrade,
 } from './lib/types';
 
 export interface QueryState<T> {
@@ -165,14 +166,14 @@ export function useClusters(
     );
 }
 
-export function useEscrowBalances(
+export function useBalances(
     address: string | null,
     opts: { refetchInterval?: number } = {},
-): QueryState<EscrowBalances> {
+): QueryState<PmxtBalance[]> {
     const { client } = usePmxt();
     return usePmxtQuery(
-        ['escrow-balances', address],
-        () => client.escrowBalances(address as string),
+        ['balances', address],
+        () => client.fetchBalances(address as string),
         {
             enabled: !!address,
             refetchInterval: opts.refetchInterval ?? 15_000,
@@ -180,20 +181,38 @@ export function useEscrowBalances(
     );
 }
 
-export function useOpenOrders(address: string | null): QueryState<OpenOrder[]> {
+export function usePositions(
+    address: string | null,
+    opts: { refetchInterval?: number } = {},
+): QueryState<PmxtPosition[]> {
+    const { client } = usePmxt();
+    return usePmxtQuery(
+        ['positions', address],
+        () => client.fetchPositions(address as string),
+        {
+            enabled: !!address,
+            refetchInterval: opts.refetchInterval ?? 15_000,
+        },
+    );
+}
+
+export function useOpenOrders(address: string | null): QueryState<PmxtOrder[]> {
     const { client } = usePmxt();
     return usePmxtQuery(
         ['open-orders', address],
-        () => client.openOrders(address as string),
+        () => client.fetchOpenOrders(address as string),
         { enabled: !!address, refetchInterval: 15_000 },
     );
 }
 
-export function useUserTrades(address: string | null): QueryState<UserTrade[]> {
+export function useUserTrades(
+    address: string | null,
+    limit?: number,
+): QueryState<PmxtUserTrade[]> {
     const { client } = usePmxt();
     return usePmxtQuery(
-        ['user-trades', address],
-        () => client.userTrades(address as string),
+        ['user-trades', address, limit],
+        () => client.fetchUserTrades(address as string, limit),
         { enabled: !!address, refetchInterval: 30_000 },
     );
 }

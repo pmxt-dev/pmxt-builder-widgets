@@ -30,7 +30,8 @@ export {
     useOHLCV,
     usePublicTrades,
     useClusters,
-    useEscrowBalances,
+    useBalances,
+    usePositions,
     useOpenOrders,
     useUserTrades,
 } from './hooks';

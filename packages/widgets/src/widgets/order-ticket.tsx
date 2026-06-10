@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState, type ReactNode } from 'react';
-import { useEscrowBalances, useOrderBook } from '../hooks';
+import { useOrderBook, usePositions } from '../hooks';
 import { usePmxt } from '../provider';
 import { formatPrice, round2, truncate4 } from '../lib/format';
 import { venueTheme } from '../lib/venues';
@@ -9,16 +9,16 @@ import { AlertIcon, CheckIcon, ExternalLinkIcon, SpinnerIcon } from '../lib/icon
 import { VenueBadge } from './venue-badge';
 import type {
     BuildOrderRequest,
-    BuildOrderResponse,
+    BuiltOrder,
     PickedMarket,
-    SubmitOrderResponse,
+    PmxtOrder,
 } from '../lib/types';
 
 export interface OrderTicketProps {
     market: PickedMarket;
     defaultSide?: 'buy' | 'sell';
-    /** Called once when the order settles (any terminal status). */
-    onDone?: (result: SubmitOrderResponse) => void;
+    /** Called once when the order reaches a terminal status. */
+    onDone?: (order: PmxtOrder) => void;
     className?: string;
 }
 
@@ -28,10 +28,10 @@ type OrderType = 'market' | 'limit';
 type Stage =
     | { name: 'input' }
     | { name: 'building' }
-    | { name: 'quoted'; quote: BuildOrderResponse }
-    | { name: 'signing'; quote: BuildOrderResponse }
-    | { name: 'submitting'; quote: BuildOrderResponse }
-    | { name: 'done'; result: SubmitOrderResponse }
+    | { name: 'quoted'; built: BuiltOrder }
+    | { name: 'signing'; built: BuiltOrder }
+    | { name: 'submitting'; built: BuiltOrder }
+    | { name: 'done'; order: PmxtOrder }
     | { name: 'error'; message: string };
 
 const BUY_QUICK_AMOUNTS = [1, 5, 10, 50] as const;
@@ -46,10 +46,14 @@ const SELL_PCTS = [25, 50, 100] as const;
 const OPINION_MIN_ORDER_VALUE_USDC = 1.31;
 
 /**
- * Full non-custodial order flow for one picked market+outcome:
- * input → build (server quote) → EIP-712 sign → submit → settled.
- * Handles Opinion's dual-leg sells (extra BSC pull signature) when the
- * quote carries `pull_typed_data`.
+ * Full non-custodial order flow for one picked market+outcome against the
+ * documented PMXT `/v0` trading surface:
+ * input → build-order (server quote) → EIP-712 sign → submit-order → settled.
+ * Opinion's dual-leg sells (extra BSC pull signature) are handled when the
+ * build carries `pull_typed_data`.
+ *
+ * Note: the hosted v0 API currently returns 501 for limit orders — we keep
+ * the Limit tab anyway; the server error surfaces in the error stage.
  */
 export function OrderTicket({
     market,
@@ -74,12 +78,18 @@ export function OrderTicket({
     const shares = Number.parseFloat(sharesStr) || 0;
     const limitPrice = Number.parseFloat(limitPriceStr) || 0;
 
-    const balances = useEscrowBalances(!isBuy && address ? address : null);
+    const positions = usePositions(!isBuy && address ? address : null);
     const heldShares =
-        balances.data?.tokens.find((t) => t.token_id === market.tokenId)
-            ?.escrow_balance_tokens ?? 0;
+        positions.data?.find(
+            (p) =>
+                (market.outcomeUuid != null &&
+                    p.outcome_id === market.outcomeUuid) ||
+                p.raw?.token_id === market.tokenId,
+        )?.shares ?? 0;
 
-    const book = useOrderBook(market.venue, market.tokenId, { depth: 5 });
+    // `tokenId` may be '' for UUID-only picks — the hook skips fetching then
+    // and we fall back to the catalog price carried on the pick.
+    const book = useOrderBook(market.venue, market.tokenId || null, { depth: 5 });
     const bestAsk = book.data?.asks?.[0]?.price;
     const bestBid = book.data?.bids?.[0]?.price;
     const fallbackPrice = market.price > 0 ? market.price : null;
@@ -104,8 +114,6 @@ export function OrderTicket({
     const limitTotal = isLimit && limitPrice > 0 ? shares * limitPrice : 0;
 
     const insufficient = !isBuy && shares > heldShares + 1e-9;
-    const opinionMissingMarketId =
-        market.venue === 'opinion' && market.opinionMarketId == null;
 
     // Projected order value: market buy → amount; market sell → shares*bestBid;
     // limit → shares*limitPrice.
@@ -128,30 +136,58 @@ export function OrderTicket({
         if (!address) return;
         setStage({ name: 'building' });
         try {
-            const body: BuildOrderRequest = {
-                side,
-                venue: market.venue,
-                token_id: market.tokenId,
-                user_address: address,
-                neg_risk: market.negRisk,
-                order_type: orderType,
-                ...(market.venue === 'opinion'
-                    ? { opinion_market_id: market.opinionMarketId }
-                    : {}),
-                ...(isBuy && !isLimit ? { amount_usdc: amount } : { shares }),
-                ...(isLimit ? { limit_price: limitPrice } : {}),
-            };
-            const quote = await client.buildOrder(body);
-            setStage({ name: 'quoted', quote });
+            // Identify the outcome with the catalog UUID when known,
+            // otherwise with the venue-native (venue, venue_outcome_id) pair.
+            const identification: Pick<
+                BuildOrderRequest,
+                'market_id' | 'outcome_id' | 'venue' | 'venue_outcome_id'
+            > = market.outcomeUuid
+                ? {
+                      outcome_id: market.outcomeUuid,
+                      ...(market.marketUuid
+                          ? { market_id: market.marketUuid }
+                          : {}),
+                  }
+                : { venue: market.venue, venue_outcome_id: market.tokenId };
+
+            const body: BuildOrderRequest = isLimit
+                ? {
+                      ...identification,
+                      side,
+                      order_type: 'limit',
+                      denom: 'shares',
+                      amount: shares,
+                      price: limitPrice,
+                      user_address: address,
+                  }
+                : isBuy
+                  ? {
+                        ...identification,
+                        side: 'buy',
+                        order_type: 'market',
+                        denom: 'usdc',
+                        amount,
+                        user_address: address,
+                    }
+                  : {
+                        ...identification,
+                        side: 'sell',
+                        order_type: 'market',
+                        denom: 'shares',
+                        amount: shares,
+                        user_address: address,
+                    };
+            const built = await client.buildOrder(body);
+            setStage({ name: 'quoted', built });
         } catch (err: unknown) {
             setStage({
                 name: 'error',
                 message: err instanceof Error ? err.message : 'Build failed',
             });
         }
-    }, [address, client, side, market, orderType, isBuy, isLimit, amount, shares, limitPrice]);
+    }, [address, client, side, market, isBuy, isLimit, amount, shares, limitPrice]);
 
-    const refetchBalances = balances.refetch;
+    const refetchPositions = positions.refetch;
     const handleConfirm = useCallback(async () => {
         if (stage.name !== 'quoted') return;
         const signer = wallet.signer;
@@ -162,34 +198,33 @@ export function OrderTicket({
             });
             return;
         }
-        const { quote } = stage;
+        const { built } = stage;
         try {
-            setStage({ name: 'signing', quote });
-            const signature = await signer.signTypedData(quote.typed_data);
+            setStage({ name: 'signing', built });
+            const signature = await signer.signTypedData(built.typed_data);
             // Opinion sells carry a second BSC pull leg to sign.
-            const pullSignature =
-                quote.side === 'sell' && quote.pull_typed_data
-                    ? await signer.signTypedData(quote.pull_typed_data)
-                    : undefined;
+            let pullSignature: `0x${string}` | undefined;
+            if (built.pull_typed_data) {
+                pullSignature = await signer.signTypedData(built.pull_typed_data);
+            }
 
-            setStage({ name: 'submitting', quote });
-            const result = await client.submitOrder({
-                side: quote.side,
-                params: quote.params,
+            setStage({ name: 'submitting', built });
+            const order = await client.submitOrder({
+                built_order_id: built.built_order_id,
                 signature,
                 pull_signature: pullSignature,
                 wait: true,
             });
-            setStage({ name: 'done', result });
-            if (quote.side === 'sell') refetchBalances();
-            onDone?.(result);
+            setStage({ name: 'done', order });
+            if (built.side === 'sell') refetchPositions();
+            onDone?.(order);
         } catch (err: unknown) {
             setStage({
                 name: 'error',
                 message: err instanceof Error ? err.message : 'Submit failed',
             });
         }
-    }, [stage, wallet.signer, client, refetchBalances, onDone]);
+    }, [stage, wallet.signer, client, refetchPositions, onDone]);
 
     const resetToInput = useCallback(() => {
         setStage({ name: 'input' });
@@ -238,13 +273,6 @@ export function OrderTicket({
                     </button>
                 ) : (
                     <>
-                        {opinionMissingMarketId && (
-                            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                                This Opinion market is missing its on-chain market ID.
-                                Can&apos;t build an order for it.
-                            </div>
-                        )}
-
                         {showForm && (
                             <div className="space-y-3">
                                 <div className="flex gap-2">
@@ -445,7 +473,6 @@ export function OrderTicket({
                                     onClick={() => void handleGetQuote()}
                                     disabled={
                                         isBuilding ||
-                                        opinionMissingMarketId ||
                                         insufficient ||
                                         belowOpinionMin ||
                                         inputInvalid
@@ -461,7 +488,7 @@ export function OrderTicket({
 
                         {showQuote && (
                             <QuoteStage
-                                quote={(stage as { quote: BuildOrderResponse }).quote}
+                                built={(stage as { built: BuiltOrder }).built}
                                 market={market}
                                 busyLabel={busyLabel}
                                 onConfirm={() => void handleConfirm()}
@@ -471,7 +498,7 @@ export function OrderTicket({
 
                         {stage.name === 'done' && (
                             <DoneStage
-                                result={stage.result}
+                                order={stage.order}
                                 market={market}
                                 onReset={resetToInput}
                             />
@@ -497,22 +524,21 @@ export function OrderTicket({
 }
 
 function QuoteStage({
-    quote,
+    built,
     market,
     busyLabel,
     onConfirm,
     onCancel,
 }: {
-    quote: BuildOrderResponse;
+    built: BuiltOrder;
     market: PickedMarket;
     busyLabel: string | null;
     onConfirm: () => void;
     onCancel: () => void;
 }) {
     const theme = venueTheme(market.venue);
-    const isBuy = quote.side === 'buy';
-    const costValue =
-        quote.side === 'buy' ? quote.estimated_cost : quote.estimated_proceeds;
+    const isBuy = built.side === 'buy';
+    const { quote } = built;
 
     return (
         <div className="space-y-3">
@@ -522,12 +548,16 @@ function QuoteStage({
                 </div>
                 <dl className="mt-2 space-y-1 text-xs text-zinc-600">
                     <QuoteRow
+                        label="Best price"
+                        value={formatPrice(quote.best_price)}
+                    />
+                    <QuoteRow
                         label="Expected avg price"
                         value={formatPrice(quote.expected_avg_price)}
                     />
                     <QuoteRow
                         label={isBuy ? 'Est. cost' : 'Est. proceeds'}
-                        value={`$${costValue.toFixed(2)}`}
+                        value={`$${quote.estimated_cost_or_proceeds.toFixed(2)}`}
                     />
                     <QuoteRow label="Fee" value={`$${quote.fee_amount.toFixed(2)}`} />
                     <QuoteRow
@@ -579,52 +609,37 @@ function QuoteRow({ label, value }: { label: string; value: string }) {
 }
 
 function DoneStage({
-    result,
+    order,
     market,
     onReset,
 }: {
-    result: SubmitOrderResponse;
+    order: PmxtOrder;
     market: PickedMarket;
     onReset: () => void;
 }) {
     const theme = venueTheme(market.venue);
-    const isBuy = result.side === 'buy';
-    const tx = result.fill?.transactions?.[0];
-    const explorerHref = tx
-        ? `${tx.chain === 'bsc' ? 'https://bscscan.com/tx/' : 'https://polygonscan.com/tx/'}${tx.tx_hash}`
+    const isBuy = order.side !== 'sell';
+    const explorerHref = order.tx_hash
+        ? `${order.chain === 'bsc' ? 'https://bscscan.com/tx/' : 'https://polygonscan.com/tx/'}${order.tx_hash}`
         : null;
 
-    // `tokens_bought` / `tokens_sold` can be null on a synchronous fill —
-    // the actual count is always in fill.shares (6-dec wei).
-    const filledFromFill =
-        result.fill?.shares != null ? result.fill.shares / 1_000_000 : 0;
-    const filledShares = isBuy
-        ? (result.tokens_bought ?? filledFromFill)
-        : (result.tokens_sold ?? filledFromFill);
-    const usdcAmount = isBuy
-        ? (result.usdc_spent ?? 0)
-        : (result.usdc_to_user ?? 0);
-    const avgPrice = result.fill?.avg_price_gross ?? null;
+    // `order.filled` is a decimal share count — already scaled by the server.
+    const filledShares = order.filled;
+    const avgPrice = order.price ?? null;
+    const fee = order.fee ?? null;
 
-    // Discriminate on what the backend actually returned. `pending` /
-    // `accepted` / `unknown` are real intermediate states and must not be
-    // presented as fills; `fulfilled` with fill.type === 'none' is a no-match.
+    // Discriminate on the unified /v0 status. `accepted` / `pending` /
+    // `unknown` are real intermediate states and must not be presented as
+    // fills; `fulfilled` with zero filled shares is still in flight.
     type Variant = 'filled' | 'resting' | 'pending' | 'failed';
     const variant: Variant =
-        result.error || result.status === 'failed'
+        order.status === 'failed'
             ? 'failed'
-            : result.status === 'resting'
+            : order.status === 'resting'
               ? 'resting'
-              : result.status === 'fulfilled' && result.fill?.type !== 'none'
+              : order.status === 'fulfilled' && order.filled > 0
                 ? 'filled'
                 : 'pending';
-
-    const failureReason =
-        result.error ||
-        result.fill?.reason ||
-        (result.fill?.type === 'none'
-            ? 'No liquidity matched at the quoted price.'
-            : 'Order did not fill. Funds returned to your escrow.');
 
     const heading =
         variant === 'failed'
@@ -662,11 +677,11 @@ function DoneStage({
                 </div>
                 <div className="mt-0.5 text-xs text-zinc-500">
                     {variant === 'failed' ? (
-                        failureReason
+                        'Order did not fill. Funds returned to your escrow.'
                     ) : variant === 'resting' ? (
-                        `Limit order placed at ${result.limit_price != null ? formatPrice(result.limit_price) : '?'}. Cancel it from the open orders panel.`
+                        `Limit order placed at ${avgPrice != null ? formatPrice(avgPrice) : '?'}. Cancel it from the open orders panel.`
                     ) : variant === 'pending' ? (
-                        `Settling on-chain. Check positions in a moment — backend status: ${result.status}.`
+                        `Settling on-chain. Check positions in a moment — backend status: ${order.status}.`
                     ) : (
                         <>
                             {isBuy ? 'Bought' : 'Sold'}{' '}
@@ -683,13 +698,13 @@ function DoneStage({
                                     </span>
                                 </>
                             )}
-                            {usdcAmount > 0 && (
+                            {fee != null && fee > 0 && (
                                 <>
                                     {' · '}
                                     <span className="font-mono text-zinc-700">
-                                        ${usdcAmount.toFixed(2)}
+                                        ${fee.toFixed(2)}
                                     </span>{' '}
-                                    {isBuy ? 'spent' : 'received'}
+                                    fee
                                 </>
                             )}
                         </>

@@ -1,11 +1,11 @@
 'use client';
 
-import { useEscrowBalances } from '../hooks';
+import { usePositions } from '../hooks';
 import { usePmxtWallet } from '../provider';
-import { formatShares } from '../lib/format';
+import { formatPrice, formatShares } from '../lib/format';
 import { SpinnerIcon } from '../lib/icons';
 import { VenueBadge } from './venue-badge';
-import type { PickedMarket } from '../lib/types';
+import type { PickedMarket, PmxtPosition } from '../lib/types';
 
 export interface PositionsTableProps {
     /** Address to show positions for; defaults to the connected wallet. */
@@ -15,7 +15,7 @@ export interface PositionsTableProps {
     className?: string;
 }
 
-/** Outcome-token positions held in PMXT escrow, with optional Sell actions. */
+/** Open positions from the /v0 trading API, with optional Sell actions. */
 export function PositionsTable({
     address,
     onSell,
@@ -23,11 +23,9 @@ export function PositionsTable({
 }: PositionsTableProps) {
     const wallet = usePmxtWallet();
     const resolved = address ?? wallet.address;
-    const { data, error, loading } = useEscrowBalances(resolved);
+    const { data, error, loading } = usePositions(resolved);
 
-    const rows = (data?.tokens ?? []).filter(
-        (t) => t.escrow_balance_wei > 0 && t.token_id != null,
-    );
+    const rows = (data ?? []).filter((p) => p.shares > 0.000001);
 
     return (
         <section
@@ -60,54 +58,82 @@ export function PositionsTable({
                 </div>
             ) : (
                 <ul className="divide-y divide-zinc-100">
-                    {rows.map((t) => (
-                        <li
-                            key={t.wrapped_address}
-                            className="flex items-center gap-3 px-4 py-2.5"
-                        >
-                            <VenueBadge venue={t.venue ?? 'polymarket'} />
-                            <div className="min-w-0 flex-1">
-                                <div className="truncate text-sm text-zinc-950">
-                                    {t.market_title ?? 'Unknown market'}
-                                </div>
-                                <div className="text-[11px] text-zinc-500">
-                                    {t.outcome_name ?? '—'}
-                                </div>
-                            </div>
-                            <div className="font-mono text-sm text-zinc-900">
-                                {formatShares(t.escrow_balance_tokens)}
-                            </div>
-                            {onSell && (
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        onSell({
-                                            eventTitle: t.market_title ?? '',
-                                            question: t.market_title ?? '',
-                                            outcome: t.outcome_name ?? '',
-                                            tokenId: t.token_id ?? '',
-                                            negRisk: false,
-                                            price: 0,
-                                            venue:
-                                                t.venue === 'opinion'
-                                                    ? 'opinion'
-                                                    : 'polymarket',
-                                            opinionMarketId:
-                                                t.venue === 'opinion' &&
-                                                t.market_id != null
-                                                    ? t.market_id
-                                                    : undefined,
-                                        })
-                                    }
-                                    className="rounded-md border border-zinc-200 px-2.5 py-1 text-xs font-medium text-red-700 transition-colors hover:border-red-200 hover:bg-red-50"
-                                >
-                                    Sell
-                                </button>
-                            )}
-                        </li>
+                    {rows.map((p, i) => (
+                        <PositionRow
+                            key={p.outcome_id ?? p.raw?.token_id ?? i}
+                            position={p}
+                            onSell={onSell}
+                        />
                     ))}
                 </ul>
             )}
         </section>
+    );
+}
+
+function PositionRow({
+    position: p,
+    onSell,
+}: {
+    position: PmxtPosition;
+    onSell?: (market: PickedMarket) => void;
+}) {
+    // Without a catalog UUID or a raw token ref there is nothing to sell by.
+    const sellDisabled = p.outcome_id == null && p.raw == null;
+
+    return (
+        <li className="flex items-center gap-3 px-4 py-2.5">
+            <VenueBadge venue={p.venue} />
+            <div className="min-w-0 flex-1">
+                <div className="truncate text-sm text-zinc-950">
+                    {p.outcome_label ?? 'Outcome'}
+                </div>
+                <div className="text-[11px] text-zinc-500">
+                    {p.entry_price != null && (
+                        <>
+                            entry{' '}
+                            <span className="font-mono text-zinc-700">
+                                {formatPrice(p.entry_price)}
+                            </span>
+                        </>
+                    )}
+                    {p.entry_price != null && p.current_price != null && ' · '}
+                    {p.current_price != null && (
+                        <>
+                            now{' '}
+                            <span className="font-mono text-zinc-700">
+                                {formatPrice(p.current_price)}
+                            </span>
+                        </>
+                    )}
+                    {p.entry_price == null && p.current_price == null && '—'}
+                </div>
+            </div>
+            <div className="font-mono text-sm text-zinc-900">
+                {formatShares(p.shares)}
+            </div>
+            {onSell && (
+                <button
+                    type="button"
+                    disabled={sellDisabled}
+                    onClick={() =>
+                        onSell({
+                            eventTitle: p.outcome_label ?? 'Position',
+                            question: p.outcome_label ?? 'Position',
+                            outcome: p.outcome_label ?? '',
+                            tokenId: p.raw?.token_id ?? '',
+                            negRisk: false,
+                            price: p.current_price ?? 0,
+                            venue: p.venue,
+                            outcomeUuid: p.outcome_id ?? undefined,
+                            marketUuid: p.market_id ?? undefined,
+                        })
+                    }
+                    className="rounded-md border border-zinc-200 px-2.5 py-1 text-xs font-medium text-red-700 transition-colors hover:border-red-200 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                    Sell
+                </button>
+            )}
+        </li>
     );
 }

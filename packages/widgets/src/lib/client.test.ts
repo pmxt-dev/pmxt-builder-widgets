@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getExecutionPrice, PmxtApiError, PmxtClient, unwrapEnvelope } from './client';
-import type { BuildOrderBuyParams, OrderBook } from './types';
+import type { OrderBook } from './types';
 
 describe('unwrapEnvelope', () => {
     it('passes bare arrays through untouched', () => {
@@ -167,52 +167,51 @@ describe('PmxtClient', () => {
         expect(url).toContain('query=election');
     });
 
-    function buyParams(): BuildOrderBuyParams {
-        return {
-            user: '0x1111111111111111111111111111111111111111',
-            token_id: 'tok-1',
-            worst_price: '0.60',
-            max_cost_usdc: '10',
-            deadline: '9999999999',
-            nonce: '1',
-            neg_risk: false,
-            tick_size: '0.01',
-            venue: 'polymarket',
-        };
-    }
-
-    it('renames params.user to user_address and spreads the rest in submitOrder', async () => {
-        const calls = stubFetch({ task_id: 1 });
+    it('posts buildOrder to the documented /v0 path with the body as-is', async () => {
+        const calls = stubFetch({ built_order_id: 'b-1' });
         const client = new PmxtClient({
             apiUrl: 'https://api.test',
             tradeUrl: 'https://trade.test',
         });
-        await client.submitOrder({
+        await client.buildOrder({
+            venue: 'polymarket',
+            venue_outcome_id: 'tok-1',
             side: 'buy',
-            params: buyParams(),
-            signature: '0xabc',
+            order_type: 'market',
+            denom: 'usdc',
+            amount: 5,
+            user_address: '0x1111111111111111111111111111111111111111',
         });
-        expect(firstCall(calls).url).toBe('https://trade.test/trade/submit-order');
+        expect(firstCall(calls).url).toBe('https://trade.test/v0/trade/build-order');
         const body = JSON.parse(String(firstCall(calls).init.body)) as Record<string, unknown>;
+        expect(body.venue_outcome_id).toBe('tok-1');
+        expect(body.denom).toBe('usdc');
         expect(body.user_address).toBe('0x1111111111111111111111111111111111111111');
-        expect(body).not.toHaveProperty('user');
-        expect(body.token_id).toBe('tok-1');
-        expect(body.max_cost_usdc).toBe('10');
-        expect(body.side).toBe('buy');
+    });
+
+    it('submits by built_order_id with wait defaulting to true', async () => {
+        const calls = stubFetch({ id: '1', status: 'fulfilled', filled: 5, remaining: 0 });
+        const client = new PmxtClient({
+            apiUrl: 'https://api.test',
+            tradeUrl: 'https://trade.test',
+        });
+        await client.submitOrder({ built_order_id: 'b-1', signature: '0xabc' });
+        expect(firstCall(calls).url).toBe('https://trade.test/v0/trade/submit-order');
+        const body = JSON.parse(String(firstCall(calls).init.body)) as Record<string, unknown>;
+        expect(body.built_order_id).toBe('b-1');
         expect(body.signature).toBe('0xabc');
         expect(body.wait).toBe(true);
         expect(body).not.toHaveProperty('pull_signature');
     });
 
-    it('includes pull_signature in the body only when provided', async () => {
-        const calls = stubFetch({ task_id: 2 });
+    it('forwards pull_signature and an explicit wait=false in submitOrder', async () => {
+        const calls = stubFetch({ id: '2', status: 'pending', filled: 0, remaining: 5 });
         const client = new PmxtClient({
             apiUrl: 'https://api.test',
             tradeUrl: 'https://trade.test',
         });
         await client.submitOrder({
-            side: 'sell',
-            params: buyParams(),
+            built_order_id: 'b-2',
             signature: '0xabc',
             pull_signature: '0xdef',
             wait: false,
@@ -227,33 +226,71 @@ describe('PmxtClient', () => {
         const client = new PmxtClient({ apiUrl: 'https://api.test' });
         expect(() =>
             client.buildOrder({
-                side: 'buy',
                 venue: 'polymarket',
-                token_id: 'tok-1',
-                user_address: '0x1111111111111111111111111111111111111111',
-                neg_risk: false,
+                venue_outcome_id: 'tok-1',
+                side: 'buy',
                 order_type: 'market',
-                amount_usdc: 10,
+                denom: 'usdc',
+                amount: 10,
+                user_address: '0x1111111111111111111111111111111111111111',
             }),
         ).toThrow('`tradeUrl` is not configured');
     });
 
-    it('returns res.orders from openOrders', async () => {
-        const orders = [{ task_id: 7 }];
+    it('hits the /v0 user-scoped read paths and accepts bare arrays', async () => {
+        const orders = [{ id: '7', status: 'resting', filled: 0, remaining: 5 }];
+        const calls = stubFetch(orders);
+        const client = new PmxtClient({
+            apiUrl: 'https://api.test',
+            tradeUrl: 'https://trade.test',
+        });
+        expect(await client.fetchOpenOrders('0xabc')).toEqual(orders);
+        expect(firstCall(calls).url).toBe('https://trade.test/v0/orders/open?address=0xabc');
+    });
+
+    it('unwraps {orders: [...]} envelopes and tolerates missing keys', async () => {
+        const orders = [{ id: '7', status: 'resting', filled: 0, remaining: 5 }];
         stubFetch({ orders });
         const client = new PmxtClient({
             apiUrl: 'https://api.test',
             tradeUrl: 'https://trade.test',
         });
-        expect(await client.openOrders('0xabc')).toEqual(orders);
+        expect(await client.fetchOpenOrders('0xabc')).toEqual(orders);
+        stubFetch({});
+        expect(await client.fetchOpenOrders('0xabc')).toEqual([]);
     });
 
-    it('returns an empty array when openOrders response has no orders key', async () => {
-        stubFetch({});
+    it('builds /v0 balance, position, and trade URLs from the address', async () => {
+        const calls = stubFetch([]);
         const client = new PmxtClient({
             apiUrl: 'https://api.test',
             tradeUrl: 'https://trade.test',
         });
-        expect(await client.openOrders('0xabc')).toEqual([]);
+        await client.fetchBalances('0xabc');
+        await client.fetchPositions('0xabc');
+        await client.fetchUserTrades('0xabc', 10);
+        expect(calls[0]?.url).toBe('https://trade.test/v0/user/0xabc/balances');
+        expect(calls[1]?.url).toBe('https://trade.test/v0/user/0xabc/positions');
+        expect(calls[2]?.url).toBe('https://trade.test/v0/user/0xabc/trades?limit=10');
+    });
+
+    it('runs the documented two-step cancel flow', async () => {
+        const calls = stubFetch({ cancel_id: 'c-1', deadline: 123 });
+        const client = new PmxtClient({
+            apiUrl: 'https://api.test',
+            tradeUrl: 'https://trade.test',
+        });
+        await client.buildCancel({ order_id: '42', user_address: '0xabc' });
+        await client.cancelOrder({ cancel_id: 'c-1', signature: '0xsig' });
+        expect(calls[0]?.url).toBe('https://trade.test/v0/orders/cancel/build');
+        expect(JSON.parse(String(calls[0]?.init.body))).toEqual({
+            order_id: '42',
+            user_address: '0xabc',
+        });
+        expect(calls[1]?.url).toBe('https://trade.test/v0/orders/cancel');
+        expect(JSON.parse(String(calls[1]?.init.body))).toEqual({
+            cancel_id: 'c-1',
+            signature: '0xsig',
+        });
     });
 });

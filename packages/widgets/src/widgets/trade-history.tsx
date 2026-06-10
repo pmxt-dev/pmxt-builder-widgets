@@ -4,7 +4,8 @@ import { useUserTrades } from '../hooks';
 import { usePmxtWallet } from '../provider';
 import { formatPrice, formatShares, formatTimeAgo } from '../lib/format';
 import { ExternalLinkIcon, SpinnerIcon } from '../lib/icons';
-import type { UserTrade } from '../lib/types';
+import { VenueBadge } from './venue-badge';
+import type { PmxtUserTrade } from '../lib/types';
 
 export interface TradeHistoryProps {
     /** Address to show trades for; defaults to the connected wallet. */
@@ -22,7 +23,7 @@ export function TradeHistory({
 }: TradeHistoryProps) {
     const wallet = usePmxtWallet();
     const resolved = address ?? wallet.address;
-    const { data, error, loading } = useUserTrades(resolved);
+    const { data, error, loading } = useUserTrades(resolved, limit);
 
     const trades = (data ?? []).slice(0, limit);
 
@@ -66,10 +67,12 @@ export function TradeHistory({
     );
 }
 
-function TradeRow({ trade }: { trade: UserTrade }) {
-    const tx = trade.fill?.transactions?.[0];
-    const explorerHref = tx?.tx_hash
-        ? `${tx.chain === 'bsc' ? 'https://bscscan.com/tx/' : 'https://polygonscan.com/tx/'}${tx.tx_hash}`
+function TradeRow({ trade }: { trade: PmxtUserTrade }) {
+    // /v0 reports `amount` in 6-dec micro-shares (58139533 micros = 58.139533
+    // shares) — scale down before display.
+    const shares = trade.amount != null ? trade.amount / 1_000_000 : null;
+    const explorerHref = trade.tx_hash
+        ? `${trade.chain === 'bsc' ? 'https://bscscan.com/tx/' : 'https://polygonscan.com/tx/'}${trade.tx_hash}`
         : null;
 
     const sideClass =
@@ -81,27 +84,24 @@ function TradeRow({ trade }: { trade: UserTrade }) {
 
     return (
         <li className="flex items-center gap-3 px-4 py-2.5">
+            <VenueBadge venue={trade.venue ?? 'polymarket'} />
             <span
                 className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${sideClass}`}
             >
                 {trade.side ?? '—'}
             </span>
             <div className="min-w-0 flex-1">
-                <div className="truncate text-sm text-zinc-950">
-                    {trade.market?.title ?? 'Unknown market'}
-                    {trade.market?.outcome && (
-                        <span className="text-zinc-500"> · {trade.market.outcome}</span>
-                    )}
+                <div className="text-sm text-zinc-950">
+                    <span className="font-mono text-zinc-700">
+                        {formatShares(shares)}
+                    </span>{' '}
+                    @{' '}
+                    <span className="font-mono text-zinc-700">
+                        {formatPrice(trade.price)}
+                    </span>
                 </div>
                 <div className="text-[11px] text-zinc-500">
-                    <span className="font-mono text-zinc-700">
-                        {formatShares(trade.fill?.shares)}
-                    </span>{' '}
-                    shares @{' '}
-                    <span className="font-mono text-zinc-700">
-                        {formatPrice(trade.fill?.avg_price_gross)}
-                    </span>{' '}
-                    · {formatTimeAgo(trade.ts)}
+                    {formatTimeAgo(trade.timestamp)}
                 </div>
             </div>
             {explorerHref && (

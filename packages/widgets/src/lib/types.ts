@@ -2,8 +2,8 @@
  * Unified PMXT types shared by every widget.
  *
  * Market-data shapes mirror the pmxt catalog API (`api.pmxt.dev`); trading
- * shapes mirror the PMXT trading API (`trade.pmxt.dev`) build/submit-order
- * wire format.
+ * shapes mirror the documented PMXT hosted trading API (`trade.pmxt.dev`)
+ * `/v0` wire format — the same surface the official pmxt SDKs use.
  */
 
 /** Venues the catalog API can read from. */
@@ -108,7 +108,7 @@ export interface ExecutionPrice {
     partialFill: boolean;
 }
 
-// ---- Trading wire format (trade.pmxt.dev) ------------------------------
+// ---- Hosted trading wire format (trade.pmxt.dev /v0) --------------------
 
 export interface TypedData {
     types: Record<string, Array<{ name: string; type: string }>>;
@@ -122,195 +122,162 @@ export interface TypedData {
     message: Record<string, string | number | boolean>;
 }
 
-export interface BuildOrderBuyParams {
-    user: `0x${string}`;
-    token_id: string;
-    worst_price: string;
-    max_cost_usdc: string;
-    deadline: string;
-    nonce: string;
-    neg_risk: boolean;
-    tick_size: string;
-    venue: TradingVenue;
-    opinion_market_id?: number;
+/**
+ * `POST /v0/trade/build-order` request. Identify the outcome with EITHER a
+ * catalog `outcome_id` UUID OR a `(venue, venue_outcome_id)` pair — exactly
+ * one of the two shapes.
+ *
+ * Denomination rules: market buy → `denom: 'usdc'` (amount is a USDC
+ * budget); market sell and all limit orders → `denom: 'shares'`.
+ */
+export interface BuildOrderRequest {
+    market_id?: string;
+    outcome_id?: string;
+    venue?: TradingVenue;
+    venue_outcome_id?: string;
+    side: 'buy' | 'sell';
+    order_type: 'market' | 'limit';
+    amount: number;
+    denom: 'usdc' | 'shares';
+    /** Required for limit orders. Decimal price per share (0–1]. */
+    price?: number;
+    slippage_pct?: number;
+    user_address: string;
 }
 
-export interface BuildOrderSellParams {
-    user: `0x${string}`;
-    token_id: string;
-    shares_6dec: string;
-    worst_price: string;
-    deadline: string;
-    nonce: string;
-    neg_risk: boolean;
-    tick_size: string;
-    venue: TradingVenue;
-    opinion_market_id?: number;
-}
-
-export interface BuildOrderBuyResponse {
-    side: 'buy';
-    typed_data: TypedData;
-    params: BuildOrderBuyParams;
-    best_ask: number;
+export interface BuildOrderQuote {
+    best_price: number;
     expected_avg_price: number;
     expected_slippage_pct: number;
-    worst_price: number;
-    estimated_cost: number;
-    max_cost: number;
-    expected_shares_received?: number;
+    estimated_cost_or_proceeds: number;
     fillable: boolean;
     liquidity: number;
     fee_amount: number;
     tick_size: string;
-    venue: TradingVenue;
 }
 
-export interface BuildOrderSellResponse {
-    side: 'sell';
+/** Venue-native fields the server resolved from catalog UUIDs. */
+export interface ResolvedOutcome {
+    venue: TradingVenue;
+    token_id: string;
+    neg_risk: boolean;
+    tick_size: number;
+    opinion_market_id?: number | null;
+}
+
+/** `POST /v0/trade/build-order` response. */
+export interface BuiltOrder {
+    built_order_id: string;
+    side: 'buy' | 'sell';
     typed_data: TypedData;
     /** Second EIP-712 payload for cross-chain (Opinion) sells — BSC pull leg. */
-    pull_typed_data?: TypedData;
-    params: BuildOrderSellParams;
-    best_bid: number;
-    expected_avg_price: number;
-    expected_slippage_pct: number;
-    worst_price: number;
-    estimated_proceeds: number;
-    min_proceeds: number;
-    fillable: boolean;
-    liquidity: number;
-    fee_amount: number;
-    tick_size: string;
-    venue: TradingVenue;
+    pull_typed_data?: TypedData | null;
+    quote: BuildOrderQuote;
+    resolved?: ResolvedOutcome | null;
 }
 
-export type BuildOrderResponse = BuildOrderBuyResponse | BuildOrderSellResponse;
+export interface SubmitOrderRequest {
+    built_order_id: string;
+    signature: `0x${string}`;
+    pull_signature?: `0x${string}`;
+    wait?: boolean;
+}
 
-export interface BuildOrderRequest {
-    side: 'buy' | 'sell';
+/** Echoed when reverse-resolution misses, so callers can still act. */
+export interface RawTokenRef {
     venue: TradingVenue;
     token_id: string;
-    user_address: `0x${string}`;
-    neg_risk: boolean;
-    opinion_market_id?: number;
-    order_type: 'market' | 'limit';
-    amount_usdc?: number;
-    shares?: number;
-    limit_price?: number;
-    slippage_pct?: number;
 }
 
-export interface OrderFill {
-    type: 'full' | 'partial' | 'none';
+/**
+ * Unified `/v0` order shape (submit/cancel responses, open-orders reads).
+ * Submit statuses: accepted | pending | fulfilled | failed | unknown |
+ * resting. Open-order statuses: resting | partial. Cancel statuses:
+ * cancellation_requested | cancelled | failed.
+ */
+export interface PmxtOrder {
+    id: string;
+    market_id?: string | null;
+    outcome_id?: string | null;
+    side?: 'buy' | 'sell' | null;
+    type?: 'market' | 'limit' | null;
+    amount?: number | null;
+    price?: number | null;
+    filled: number;
+    remaining: number;
+    status: string;
+    fee?: number | null;
+    timestamp?: string | null;
+    tx_hash?: string | null;
+    chain?: string | null;
+    block_number?: number | null;
+    raw?: RawTokenRef | null;
+    /** Present on open-order reads from some deployments. */
+    market_title?: string | null;
+}
+
+/** Unified `/v0` user trade shape. `amount` is in 6-dec micro-shares. */
+export interface PmxtUserTrade {
+    id?: string | null;
+    market_id?: string | null;
+    outcome_id?: string | null;
+    side?: 'buy' | 'sell' | null;
+    amount?: number | null;
+    price?: number | null;
+    fee?: number | null;
+    timestamp?: string | null;
+    tx_hash?: string | null;
+    chain?: string | null;
+    venue?: TradingVenue | null;
+    raw?: RawTokenRef | null;
+}
+
+/** Unified `/v0` position shape. `shares` is a decimal share count. */
+export interface PmxtPosition {
+    market_id?: string | null;
+    outcome_id?: string | null;
+    venue: TradingVenue;
     shares: number;
-    avg_price_gross: number;
-    avg_price_net: number;
-    fees: { shares: number; usdt: number };
-    trade_no: string;
-    transactions: Array<{
-        chain: 'polygon' | 'bsc';
-        tx_hash: `0x${string}`;
-        ts: number;
-    }>;
-    reason?: string | null;
+    current_price?: number | null;
+    current_value?: number | null;
+    outcome_label?: string | null;
+    entry_price?: number | null;
+    realized_pnl?: number | null;
+    raw?: RawTokenRef | null;
 }
 
-export interface SubmitOrderResponse {
-    side: 'buy' | 'sell';
-    task_id: number;
-    status: 'accepted' | 'pending' | 'fulfilled' | 'failed' | 'unknown' | 'resting';
-    limit_price?: number;
-    execute_tx_hash: string;
-    tokens_requested: number;
-    tokens_bought?: number;
-    tokens_sold?: number;
-    usdc_spent?: number;
-    usdc_to_user?: number;
-    fee_charged: number;
-    error: string;
-    fill: OrderFill;
+export interface PmxtBalance {
+    currency: string;
+    amount: number;
+    venue?: TradingVenue | null;
 }
 
-export interface EscrowBalances {
-    address: string;
-    usdc: {
-        escrow_balance_wei: number;
-        escrow_balance_tokens: number;
-    };
-    tokens: Array<{
-        wrapped_address: string;
-        token_id: string | null;
-        venue: string | null;
-        wrapped_symbol: string | null;
-        market_title: string | null;
-        outcome_name: string | null;
-        market_id: number | null;
-        escrow_balance_wei: number;
-        escrow_balance_tokens: number;
-    }>;
-}
-
-export interface OpenOrder {
-    task_id: number;
-    side: 'buy' | 'sell';
-    venue: TradingVenue;
-    token_id: string;
-    market_title: string | null;
-    limit_price: number;
-    shares_total: number;
-    shares_filled: number;
-    status: 'resting' | 'partial';
-    expires_at: number;
-    created_at: string;
+export interface CancelBuildRequest {
+    order_id: string;
+    user_address: string;
 }
 
 export interface CancelBuildResponse {
-    task_id: number;
-    nonce: number;
-    deadline: number;
+    cancel_id: string;
     typed_data: TypedData;
-    pull_typed_data?: TypedData;
+    pull_typed_data?: TypedData | null;
+    deadline: number;
 }
 
-export interface CancelOrderResponse {
-    task_id: number;
-    status: 'cancellation_requested' | 'cancelled' | 'failed';
-    message?: string;
-}
-
-export interface UserTrade {
-    id: number | null;
-    ts: string | null;
-    side: 'buy' | 'sell' | null;
-    market: {
-        venue: TradingVenue;
-        id: number | null;
-        token_id: string | null;
-        title: string | null;
-        outcome: string | null;
-    } | null;
-    order: {
-        shares: number | null;
-        limit_price: number | null;
-        expected_avg_price: number | null;
-    } | null;
-    fill: {
-        type: string | null;
-        shares: number | null;
-        avg_price_gross: number | null;
-        avg_price_net: number | null;
-        transactions: Array<{
-            chain: string | null;
-            tx_hash: string | null;
-            ts: string | null;
-        }>;
-    } | null;
+export interface CancelRequest {
+    cancel_id: string;
+    signature: `0x${string}`;
+    pull_signature?: `0x${string}`;
 }
 
 /**
  * A market+outcome the user picked to trade. Produced by discovery widgets
  * (MarketSearch, TrendingMarkets, MarketCard) and consumed by OrderTicket.
+ *
+ * `tokenId` is the venue-native outcome id straight from the catalog
+ * (`outcome.outcomeId`). When catalog UUIDs are known (e.g. rows from
+ * PositionsTable), `marketUuid`/`outcomeUuid` are set and OrderTicket
+ * prefers them for build-order identification.
  */
 export interface PickedMarket {
     eventTitle: string;
@@ -321,4 +288,6 @@ export interface PickedMarket {
     price: number;
     venue: TradingVenue;
     opinionMarketId?: number;
+    marketUuid?: string;
+    outcomeUuid?: string;
 }

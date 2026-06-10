@@ -1,8 +1,8 @@
 'use client';
 
-import { useEscrowBalances } from '../hooks';
+import { useBalances } from '../hooks';
 import { usePmxtWallet } from '../provider';
-import { formatUsd } from '../lib/format';
+import { formatUsd, venueLabel } from '../lib/format';
 import { ExternalLinkIcon, SpinnerIcon } from '../lib/icons';
 
 export interface BalanceCardProps {
@@ -11,11 +11,11 @@ export interface BalanceCardProps {
     className?: string;
 }
 
-/** PMXT escrow USDC balance for an address, with a deposit/withdraw link. */
+/** PMXT escrow balance for an address, with a deposit/withdraw link. */
 export function BalanceCard({ address, className = '' }: BalanceCardProps) {
     const wallet = usePmxtWallet();
     const resolved = address ?? wallet.address;
-    const { data, error, loading } = useEscrowBalances(resolved);
+    const { data, error, loading } = useBalances(resolved);
 
     if (!resolved) {
         return (
@@ -34,8 +34,8 @@ export function BalanceCard({ address, className = '' }: BalanceCardProps) {
         );
     }
 
-    const positionCount =
-        data?.tokens.filter((t) => t.escrow_balance_wei > 0).length ?? 0;
+    const balances = data ?? [];
+    const primary = balances[0];
 
     return (
         <section
@@ -48,15 +48,31 @@ export function BalanceCard({ address, className = '' }: BalanceCardProps) {
                 {loading && !data ? (
                     <SpinnerIcon className="size-6 text-zinc-300" />
                 ) : (
-                    formatUsd(data?.usdc.escrow_balance_tokens)
+                    formatUsd(primary?.amount)
                 )}
             </div>
             {error && <div className="mt-1 text-xs text-red-600">{error}</div>}
-            <div className="mt-3 flex items-center justify-between gap-2 text-xs text-zinc-500">
-                <span>
-                    <span className="font-mono text-zinc-700">{positionCount}</span>{' '}
-                    outcome-token position{positionCount === 1 ? '' : 's'} held
-                </span>
+            {balances.length > 1 && (
+                <ul className="mt-3 space-y-1 border-t border-zinc-100 pt-3">
+                    {balances.map((b, i) => (
+                        <li
+                            key={`${b.venue ?? 'all'}-${b.currency}-${i}`}
+                            className="flex items-center justify-between text-xs text-zinc-600"
+                        >
+                            <span>
+                                {venueLabel(b.venue)}{' '}
+                                <span className="uppercase text-zinc-400">
+                                    {b.currency}
+                                </span>
+                            </span>
+                            <span className="font-mono text-zinc-900">
+                                {formatUsd(b.amount)}
+                            </span>
+                        </li>
+                    ))}
+                </ul>
+            )}
+            <div className="mt-3 flex items-center justify-end gap-2 text-xs text-zinc-500">
                 <a
                     href="https://pmxt.dev/dashboard/wallet"
                     target="_blank"
