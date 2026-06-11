@@ -10,8 +10,10 @@ export interface Eip1193Provider {
     ) => void;
 }
 
+/** Polygon mainnet chain id. */
 export const POLYGON_CHAIN_ID = 137;
 
+/** The injected `window.ethereum` provider; throws when no wallet is installed. */
 export function getInjectedProvider(): Eip1193Provider {
     const eth = (globalThis as { ethereum?: Eip1193Provider }).ethereum;
     if (!eth) {
@@ -22,6 +24,7 @@ export function getInjectedProvider(): Eip1193Provider {
     return eth;
 }
 
+/** Prompts the wallet to connect and returns the authorized accounts. */
 export async function requestAccounts(
     provider: Eip1193Provider,
 ): Promise<`0x${string}`[]> {
@@ -31,6 +34,7 @@ export async function requestAccounts(
     return accounts as `0x${string}`[];
 }
 
+/** Asks the wallet to switch to `chainId` (`wallet_switchEthereumChain`). */
 export async function switchChain(
     provider: Eip1193Provider,
     chainId: number,
@@ -41,6 +45,7 @@ export async function switchChain(
     });
 }
 
+/** Signs EIP-712 typed data via `eth_signTypedData_v4`. */
 export async function signTypedData(
     provider: Eip1193Provider,
     address: string,
@@ -71,6 +76,7 @@ export interface PmxtSigner {
     signTypedData: (typed: TypedData) => Promise<`0x${string}`>;
 }
 
+/** PmxtSigner backed by the injected wallet; switches chain before each signature. */
 export function createInjectedSigner(address: string): PmxtSigner {
     return {
         async signTypedData(typed: TypedData) {

@@ -1,11 +1,25 @@
 'use client';
 
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import {
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    type ReactNode,
+} from 'react';
 import { useOrderBook, usePositions } from '../hooks';
 import { usePmxt } from '../provider';
-import { formatPrice, round2, truncate4 } from '../lib/format';
+import { fireTradeConfetti } from '../lib/confetti';
+import { formatPrice, formatUsd, round2, truncate4 } from '../lib/format';
 import { venueTheme } from '../lib/venues';
-import { AlertIcon, CheckIcon, ExternalLinkIcon, SpinnerIcon } from '../lib/icons';
+import {
+    AlertIcon,
+    CheckIcon,
+    DollarIcon,
+    ExternalLinkIcon,
+    SpinnerIcon,
+} from '../lib/icons';
 import { VenueBadge } from './venue-badge';
 import type {
     BuildOrderRequest,
@@ -19,6 +33,13 @@ export interface OrderTicketProps {
     defaultSide?: 'buy' | 'sell';
     /** Called once when the order reaches a terminal status. */
     onDone?: (order: PmxtOrder) => void;
+    /**
+     * Hide the question/venue header and outer border — for embedding inside
+     * a card that already shows them (e.g. MarketCard's inline trade panel).
+     */
+    compact?: boolean;
+    /** Celebrate filled orders with a confetti burst (default true). */
+    confetti?: boolean;
     className?: string;
 }
 
@@ -59,9 +80,11 @@ export function OrderTicket({
     market,
     defaultSide = 'buy',
     onDone,
+    compact = false,
+    confetti = true,
     className = '',
 }: OrderTicketProps) {
-    const { client, wallet } = usePmxt();
+    const { client, wallet, sandbox } = usePmxt();
     const address = wallet.address;
     const theme = venueTheme(market.venue);
 
@@ -113,7 +136,8 @@ export function OrderTicket({
             : 0;
     const limitTotal = isLimit && limitPrice > 0 ? shares * limitPrice : 0;
 
-    const insufficient = !isBuy && shares > heldShares + 1e-9;
+    // Held-balance checks only make sense once a wallet is connected.
+    const insufficient = !isBuy && address != null && shares > heldShares + 1e-9;
 
     // Projected order value: market buy → amount; market sell → shares*bestBid;
     // limit → shares*limitPrice.
@@ -136,6 +160,17 @@ export function OrderTicket({
         if (!address) return;
         setStage({ name: 'building' });
         try {
+            // Sandbox fills are keyed by ids — hand over the human-readable
+            // labels so simulated positions and orders render nicely.
+            sandbox?.annotate({
+                venue: market.venue,
+                tokenId: market.tokenId,
+                outcomeUuid: market.outcomeUuid,
+                marketUuid: market.marketUuid,
+                question: market.question,
+                outcome: market.outcome,
+                price: referencePrice ?? market.price,
+            });
             // Identify the outcome with the catalog UUID when known,
             // otherwise with the venue-native (venue, venue_outcome_id) pair.
             const identification: Pick<
@@ -185,13 +220,31 @@ export function OrderTicket({
                 message: err instanceof Error ? err.message : 'Build failed',
             });
         }
-    }, [address, client, side, market, isBuy, isLimit, amount, shares, limitPrice]);
+    }, [
+        address,
+        client,
+        sandbox,
+        side,
+        market,
+        isBuy,
+        isLimit,
+        amount,
+        shares,
+        limitPrice,
+        referencePrice,
+    ]);
 
     const refetchPositions = positions.refetch;
+    // Guards a double-tap on Confirm racing ahead of the state re-render —
+    // two clicks in one frame would otherwise both pass the stage check and
+    // request two wallet signatures.
+    const confirmingRef = useRef(false);
     const handleConfirm = useCallback(async () => {
-        if (stage.name !== 'quoted') return;
+        if (stage.name !== 'quoted' || confirmingRef.current) return;
+        confirmingRef.current = true;
         const signer = wallet.signer;
         if (!signer) {
+            confirmingRef.current = false;
             setStage({
                 name: 'error',
                 message: 'Wallet signer unavailable. Reconnect your wallet.',
@@ -216,22 +269,48 @@ export function OrderTicket({
                 wait: true,
             });
             setStage({ name: 'done', order });
-            if (built.side === 'sell') refetchPositions();
+            if (built.side === 'sell') void refetchPositions();
             onDone?.(order);
         } catch (err: unknown) {
             setStage({
                 name: 'error',
                 message: err instanceof Error ? err.message : 'Submit failed',
             });
+        } finally {
+            confirmingRef.current = false;
         }
     }, [stage, wallet.signer, client, refetchPositions, onDone]);
 
+    // Prefill the limit price from the live book — covers both orders of
+    // events (user switches to Limit before or after the book loads).
+    useEffect(() => {
+        if (isLimit && referencePrice != null) {
+            setLimitPriceStr((current) =>
+                current ? current : referencePrice.toFixed(3),
+            );
+        }
+    }, [isLimit, referencePrice]);
+
+    const stepLimitPrice = useCallback(
+        (delta: number) => {
+            const base = limitPrice > 0 ? limitPrice : (referencePrice ?? 0.5);
+            const next = Math.min(
+                0.999,
+                Math.max(0.001, Math.round((base + delta) * 1000) / 1000),
+            );
+            setLimitPriceStr(next.toFixed(3));
+        },
+        [limitPrice, referencePrice],
+    );
+
     const resetToInput = useCallback(() => {
         setStage({ name: 'input' });
+        setSide(defaultSide);
+        setOrderType('market');
         setAmountStr('5');
-        setSharesStr(isBuy ? '5' : '0');
+        setSharesStr(defaultSide === 'buy' ? '5' : '0');
         setLimitPriceStr('');
-    }, [isBuy]);
+    }, [defaultSide]);
 
     const isBuilding = stage.name === 'building';
     const showForm = stage.name === 'input' || isBuilding;
@@ -249,72 +328,93 @@ export function OrderTicket({
 
     return (
         <section
-            className={`overflow-hidden rounded-xl border border-zinc-200/80 bg-white shadow-sm ${className}`}
+            className={`overflow-hidden ${
+                compact
+                    ? ''
+                    : 'rounded-xl border border-zinc-200/80 bg-[var(--pmxt-surface,#ffffff)] shadow-sm dark:border-zinc-800 dark:bg-[var(--pmxt-surface-dark,#18181b)]'
+            } ${className}`}
         >
-            <header className="border-b border-zinc-100 px-4 py-3">
-                <div className="flex items-center justify-between gap-2">
-                    <h3 className="truncate text-sm font-semibold text-zinc-950">
-                        {market.question}
-                    </h3>
-                    <VenueBadge venue={market.venue} />
-                </div>
-                <div className="mt-0.5 text-[11px] text-zinc-500">{market.outcome}</div>
-            </header>
+            {!compact && (
+                <header className="border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
+                    <div className="flex items-center justify-between gap-2">
+                        <h3 className="truncate text-sm font-semibold text-zinc-950 dark:text-zinc-50">
+                            {market.question}
+                        </h3>
+                        <VenueBadge venue={market.venue} />
+                    </div>
+                    <div className="mt-0.5 text-[11px] text-zinc-500 dark:text-zinc-400">
+                        {market.outcome}
+                    </div>
+                </header>
+            )}
 
-            <div className="space-y-3 p-4">
-                {!address ? (
-                    <button
-                        type="button"
-                        onClick={() => void wallet.connect()}
-                        disabled={wallet.connecting}
-                        className={`w-full rounded-lg ${theme.bg} ${theme.bgHover} px-3 py-2.5 text-sm font-semibold text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50`}
-                    >
-                        {wallet.connecting ? 'Connecting…' : 'Connect wallet'}
-                    </button>
-                ) : (
+            <div className={`space-y-3 ${compact ? 'pt-3' : 'p-4'}`}>
+                {
                     <>
                         {showForm && (
                             <div className="space-y-3">
-                                <div className="flex gap-2">
-                                    <div className="grid flex-1 grid-cols-2 gap-1 rounded-md bg-zinc-100 p-1">
+                                <div className="flex items-end justify-between border-b border-zinc-100 dark:border-zinc-800">
+                                    <div className="flex items-center gap-5">
                                         <SideTab
                                             active={isBuy}
-                                            activeClass="bg-emerald-600 text-white"
                                             onClick={() => setSide('buy')}
                                         >
                                             Buy
                                         </SideTab>
                                         <SideTab
                                             active={!isBuy}
-                                            activeClass="bg-red-600 text-white"
                                             onClick={() => setSide('sell')}
                                         >
                                             Sell
                                         </SideTab>
+                                        {sandbox && (
+                                            <span className="mb-1.5 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                                                Sandbox
+                                            </span>
+                                        )}
                                     </div>
-                                    <div className="grid flex-1 grid-cols-2 gap-1 rounded-md bg-zinc-100 p-1">
-                                        <SideTab
-                                            active={!isLimit}
-                                            activeClass="bg-white text-zinc-950 shadow-sm"
-                                            onClick={() => setOrderType('market')}
-                                        >
-                                            Market
-                                        </SideTab>
-                                        <SideTab
-                                            active={isLimit}
-                                            activeClass="bg-white text-zinc-950 shadow-sm"
-                                            onClick={() => setOrderType('limit')}
-                                        >
-                                            Limit
-                                        </SideTab>
-                                    </div>
+                                    <select
+                                        value={orderType}
+                                        onChange={(e) =>
+                                            setOrderType(e.target.value as OrderType)
+                                        }
+                                        aria-label="Order type"
+                                        className="mb-1.5 cursor-pointer rounded-md bg-transparent text-xs font-medium text-zinc-500 outline-none transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                                    >
+                                        <option value="market">Market</option>
+                                        <option value="limit">Limit</option>
+                                    </select>
                                 </div>
 
-                                <div className="flex items-center justify-between gap-3">
-                                    <span className="text-xs font-medium text-zinc-600">
-                                        {useAmountInput ? 'Amount' : 'Shares'}
-                                    </span>
-                                    <div className="flex flex-wrap items-center gap-1.5">
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                                            {useAmountInput ? 'Amount' : 'Shares'}
+                                        </span>
+                                        <div className="relative shrink-0">
+                                            {useAmountInput && (
+                                                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-mono text-base font-semibold text-zinc-950 dark:text-zinc-50">
+                                                    $
+                                                </span>
+                                            )}
+                                            <input
+                                                type="number"
+                                                inputMode="decimal"
+                                                step={useAmountInput ? '0.01' : '1'}
+                                                min="0"
+                                                value={useAmountInput ? amountStr : sharesStr}
+                                                onChange={(e) =>
+                                                    useAmountInput
+                                                        ? setAmountStr(e.target.value)
+                                                        : setSharesStr(e.target.value)
+                                                }
+                                                className={`w-32 rounded-lg border border-zinc-200 bg-[var(--pmxt-surface,#ffffff)] py-2 dark:border-zinc-800 dark:bg-[var(--pmxt-surface-dark,#18181b)] ${
+                                                    useAmountInput ? 'pl-7 pr-3' : 'px-3'
+                                                } text-right font-mono text-base font-semibold text-zinc-950 focus:border-zinc-400 focus:outline-none dark:text-zinc-50 dark:focus:border-zinc-600`}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-wrap justify-end gap-1.5">
                                         {useAmountInput
                                             ? BUY_QUICK_AMOUNTS.map((v) => (
                                                   <PillButton
@@ -351,41 +451,19 @@ export function OrderTicket({
                                                 ))
                                               : null}
                                     </div>
-                                    <div className="relative shrink-0">
-                                        {useAmountInput && (
-                                            <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 font-mono text-sm font-semibold text-zinc-950">
-                                                $
-                                            </span>
-                                        )}
-                                        <input
-                                            type="number"
-                                            inputMode="decimal"
-                                            step={useAmountInput ? '0.01' : '1'}
-                                            min="0"
-                                            value={useAmountInput ? amountStr : sharesStr}
-                                            onChange={(e) =>
-                                                useAmountInput
-                                                    ? setAmountStr(e.target.value)
-                                                    : setSharesStr(e.target.value)
-                                            }
-                                            className={`w-24 rounded-md border border-zinc-200 bg-white py-1.5 ${
-                                                useAmountInput ? 'pl-5 pr-2' : 'px-2'
-                                            } text-right font-mono text-sm font-semibold text-zinc-950 focus:border-zinc-400 focus:outline-none`}
-                                        />
-                                    </div>
                                 </div>
 
-                                {!isBuy && (
-                                    <div className="flex items-center justify-between text-[11px] text-zinc-500">
+                                {!isBuy && address != null && (
+                                    <div className="flex items-center justify-between text-[11px] text-zinc-500 dark:text-zinc-400">
                                         <span>
                                             Position:{' '}
-                                            <span className="font-mono text-zinc-700">
+                                            <span className="font-mono text-zinc-700 dark:text-zinc-300">
                                                 {truncate4(heldShares).toString()}
                                             </span>{' '}
                                             shares held
                                         </span>
                                         {insufficient && (
-                                            <span className="text-red-600">
+                                            <span className="text-red-600 dark:text-red-400">
                                                 Above held balance
                                             </span>
                                         )}
@@ -394,18 +472,23 @@ export function OrderTicket({
 
                                 {isLimit && (
                                     <div className="flex items-center justify-between gap-3">
-                                        <span className="text-xs font-medium text-zinc-600">
-                                            Limit price
-                                        </span>
-                                        <div className="text-[11px] text-zinc-400">
-                                            {referencePrice != null
-                                                ? `${isBuy ? 'best ask' : 'best bid'} ${formatPrice(referencePrice)}`
-                                                : 'no book'}
+                                        <div>
+                                            <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                                                Limit price
+                                            </div>
+                                            <div className="text-[11px] text-zinc-400 dark:text-zinc-500">
+                                                {referencePrice != null
+                                                    ? `${isBuy ? 'best ask' : 'best bid'} ${formatPrice(referencePrice)}`
+                                                    : 'no book'}
+                                            </div>
                                         </div>
-                                        <div className="relative shrink-0">
-                                            <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 font-mono text-sm font-semibold text-zinc-950">
-                                                $
-                                            </span>
+                                        <div className="flex shrink-0 items-center overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800">
+                                            <StepButton
+                                                label="Decrease limit price"
+                                                onClick={() => stepLimitPrice(-0.01)}
+                                            >
+                                                −
+                                            </StepButton>
                                             <input
                                                 type="number"
                                                 inputMode="decimal"
@@ -419,14 +502,20 @@ export function OrderTicket({
                                                         ? referencePrice.toFixed(3)
                                                         : '0.500'
                                                 }
-                                                className="w-24 rounded-md border border-zinc-200 bg-white py-1.5 pl-5 pr-2 text-right font-mono text-sm font-semibold text-zinc-950 focus:border-zinc-400 focus:outline-none"
+                                                className="w-20 border-x border-zinc-200 bg-[var(--pmxt-surface,#ffffff)] py-2 text-center font-mono text-sm font-semibold text-zinc-950 outline-none dark:border-zinc-800 dark:bg-[var(--pmxt-surface-dark,#18181b)] dark:text-zinc-50 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                             />
+                                            <StepButton
+                                                label="Increase limit price"
+                                                onClick={() => stepLimitPrice(0.01)}
+                                            >
+                                                +
+                                            </StepButton>
                                         </div>
                                     </div>
                                 )}
 
                                 {belowOpinionMin && (
-                                    <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                                    <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
                                         Opinion requires a minimum order value of{' '}
                                         <span className="font-mono">
                                             ${OPINION_MIN_ORDER_VALUE_USDC.toFixed(2)}
@@ -438,9 +527,9 @@ export function OrderTicket({
                                     </div>
                                 )}
 
-                                <div className="flex items-end justify-between border-t border-zinc-100 pt-3">
+                                <div className="flex items-end justify-between border-t border-zinc-100 pt-3 dark:border-zinc-800">
                                     <div>
-                                        <div className="text-xs font-medium text-zinc-600">
+                                        <div className="flex items-center gap-1.5 text-sm font-medium text-zinc-900 dark:text-zinc-100">
                                             {isLimit
                                                 ? isBuy
                                                     ? 'Max cost'
@@ -448,15 +537,20 @@ export function OrderTicket({
                                                 : isBuy
                                                   ? 'To win'
                                                   : 'Est. proceeds'}
+                                            {!isLimit && isBuy && <DollarIcon />}
                                         </div>
-                                        <div className="mt-0.5 font-mono text-[10px] text-zinc-500">
+                                        <div className="mt-0.5 font-mono text-[11px] text-zinc-400 dark:text-zinc-500">
                                             {effectivePrice != null && effectivePrice > 0
                                                 ? `${isLimit ? 'Limit' : 'Avg'} price ${formatPrice(effectivePrice)}`
                                                 : '—'}
                                         </div>
                                     </div>
                                     <div
-                                        className={`font-mono text-2xl font-semibold ${theme.text}`}
+                                        className={`font-mono text-3xl font-bold tracking-tight ${
+                                            isLimit && isBuy
+                                                ? theme.text
+                                                : 'text-[var(--pmxt-positive,#059669)]'
+                                        }`}
                                     >
                                         $
                                         {(isLimit
@@ -468,21 +562,41 @@ export function OrderTicket({
                                     </div>
                                 </div>
 
-                                <button
-                                    type="button"
-                                    onClick={() => void handleGetQuote()}
-                                    disabled={
-                                        isBuilding ||
-                                        insufficient ||
-                                        belowOpinionMin ||
-                                        inputInvalid
-                                    }
-                                    className={`w-full rounded-lg ${theme.bg} ${theme.bgHover} px-3 py-2.5 text-sm font-semibold text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50`}
-                                >
-                                    {isBuilding
-                                        ? 'Quoting…'
-                                        : `${isBuy ? 'Buy' : 'Sell'} ${market.outcome}${isLimit ? ' (limit)' : ''}`}
-                                </button>
+                                {!address ? (
+                                    <div className="space-y-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => void wallet.connect()}
+                                            disabled={wallet.connecting}
+                                            className={`w-full rounded-xl ${theme.bg} ${theme.bgHover} px-3 py-3 text-sm font-bold text-white shadow-[0_3px_0_rgba(0,0,0,0.25)] transition-all active:translate-y-[2px] active:shadow-none disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none`}
+                                        >
+                                            {wallet.connecting
+                                                ? 'Connecting…'
+                                                : 'Connect wallet'}
+                                        </button>
+                                        {wallet.connectError && (
+                                            <div className="text-center text-xs text-red-600 dark:text-red-400">
+                                                {wallet.connectError}
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={() => void handleGetQuote()}
+                                        disabled={
+                                            isBuilding ||
+                                            insufficient ||
+                                            belowOpinionMin ||
+                                            inputInvalid
+                                        }
+                                        className={`w-full rounded-xl ${theme.bg} ${theme.bgHover} px-3 py-3 text-sm font-bold text-white shadow-[0_3px_0_rgba(0,0,0,0.25)] transition-all active:translate-y-[2px] active:shadow-none disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none`}
+                                    >
+                                        {isBuilding
+                                            ? 'Quoting…'
+                                            : `${isBuy ? 'Buy' : 'Sell'} ${market.outcome}${isLimit ? ' (limit)' : ''}`}
+                                    </button>
+                                )}
                             </div>
                         )}
 
@@ -501,11 +615,13 @@ export function OrderTicket({
                                 order={stage.order}
                                 market={market}
                                 onReset={resetToInput}
+                                isSandbox={sandbox != null}
+                                confetti={confetti}
                             />
                         )}
 
                         {stage.name === 'error' && (
-                            <div className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">
+                            <div className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/40 dark:text-red-300">
                                 {stage.message}
                                 <button
                                     type="button"
@@ -517,7 +633,7 @@ export function OrderTicket({
                             </div>
                         )}
                     </>
-                )}
+                }
             </div>
         </section>
     );
@@ -557,18 +673,22 @@ function QuoteStage({
                     />
                     <QuoteRow
                         label={isBuy ? 'Est. cost' : 'Est. proceeds'}
-                        value={`$${quote.estimated_cost_or_proceeds.toFixed(2)}`}
+                        value={formatUsd(quote.estimated_cost_or_proceeds)}
                     />
-                    <QuoteRow label="Fee" value={`$${quote.fee_amount.toFixed(2)}`} />
+                    <QuoteRow label="Fee" value={formatUsd(quote.fee_amount)} />
                     <QuoteRow
                         label="Slippage"
-                        value={`${quote.expected_slippage_pct.toFixed(2)}%`}
+                        value={
+                            Number.isFinite(quote.expected_slippage_pct)
+                                ? `${quote.expected_slippage_pct.toFixed(2)}%`
+                                : '—'
+                        }
                     />
                 </dl>
             </div>
 
             {!quote.fillable && (
-                <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
                     <AlertIcon className="mt-0.5 size-3.5 shrink-0" />
                     <span>
                         Not enough liquidity to fully fill this order at the quoted
@@ -582,7 +702,7 @@ function QuoteStage({
                     type="button"
                     onClick={onCancel}
                     disabled={busyLabel != null}
-                    className="rounded-lg border border-zinc-200 px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded-lg border border-zinc-200 px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800"
                 >
                     Cancel
                 </button>
@@ -590,7 +710,7 @@ function QuoteStage({
                     type="button"
                     onClick={onConfirm}
                     disabled={busyLabel != null}
-                    className={`col-span-2 rounded-lg ${theme.bg} ${theme.bgHover} px-3 py-2 text-sm font-semibold text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50`}
+                    className={`col-span-2 rounded-xl ${theme.bg} ${theme.bgHover} px-3 py-2.5 text-sm font-bold text-white shadow-[0_3px_0_rgba(0,0,0,0.25)] transition-all active:translate-y-[2px] active:shadow-none disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none`}
                 >
                     {busyLabel ?? `Confirm ${isBuy ? 'buy' : 'sell'}`}
                 </button>
@@ -612,10 +732,14 @@ function DoneStage({
     order,
     market,
     onReset,
+    isSandbox,
+    confetti,
 }: {
     order: PmxtOrder;
     market: PickedMarket;
     onReset: () => void;
+    isSandbox: boolean;
+    confetti: boolean;
 }) {
     const theme = venueTheme(market.venue);
     const isBuy = order.side !== 'sell';
@@ -650,15 +774,27 @@ function DoneStage({
                 ? 'Order submitted'
                 : 'Order executed';
 
+    const containerRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (confetti && (variant === 'filled' || variant === 'resting')) {
+            fireTradeConfetti(containerRef.current, isBuy);
+        }
+        // Celebrate once when the done stage mounts.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     return (
-        <div className="flex flex-col items-center gap-3 text-center">
+        <div
+            ref={containerRef}
+            className="flex flex-col items-center gap-3 text-center"
+        >
             {variant === 'failed' ? (
-                <div className="flex size-10 items-center justify-center rounded-full bg-red-50">
-                    <AlertIcon className="size-5 text-red-600" />
+                <div className="flex size-10 items-center justify-center rounded-full bg-red-50 dark:bg-red-950/40">
+                    <AlertIcon className="size-5 text-red-600 dark:text-red-400" />
                 </div>
             ) : variant === 'pending' ? (
-                <div className="flex size-10 items-center justify-center rounded-full bg-zinc-100">
-                    <SpinnerIcon className="size-5 text-zinc-600" />
+                <div className="flex size-10 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
+                    <SpinnerIcon className="size-5 text-zinc-600 dark:text-zinc-300" />
                 </div>
             ) : (
                 <div
@@ -670,12 +806,14 @@ function DoneStage({
             <div>
                 <div
                     className={`text-sm font-semibold ${
-                        variant === 'failed' ? 'text-red-700' : 'text-zinc-950'
+                        variant === 'failed'
+                            ? 'text-red-700 dark:text-red-300'
+                            : 'text-zinc-950 dark:text-zinc-50'
                     }`}
                 >
                     {heading}
                 </div>
-                <div className="mt-0.5 text-xs text-zinc-500">
+                <div className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
                     {variant === 'failed' ? (
                         'Order did not fill. Funds returned to your escrow.'
                     ) : variant === 'resting' ? (
@@ -685,7 +823,7 @@ function DoneStage({
                     ) : (
                         <>
                             {isBuy ? 'Bought' : 'Sold'}{' '}
-                            <span className="font-mono text-zinc-700">
+                            <span className="font-mono text-zinc-700 dark:text-zinc-300">
                                 {filledShares.toFixed(4)}
                             </span>{' '}
                             shares of {market.outcome}
@@ -693,7 +831,7 @@ function DoneStage({
                                 <>
                                     {' '}
                                     @{' '}
-                                    <span className="font-mono text-zinc-700">
+                                    <span className="font-mono text-zinc-700 dark:text-zinc-300">
                                         {formatPrice(avgPrice)}
                                     </span>
                                 </>
@@ -701,7 +839,7 @@ function DoneStage({
                             {fee != null && fee > 0 && (
                                 <>
                                     {' · '}
-                                    <span className="font-mono text-zinc-700">
+                                    <span className="font-mono text-zinc-700 dark:text-zinc-300">
                                         ${fee.toFixed(2)}
                                     </span>{' '}
                                     fee
@@ -710,14 +848,20 @@ function DoneStage({
                         </>
                     )}
                 </div>
+                {isSandbox && variant !== 'failed' && (
+                    <div className="mt-1.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                        Simulated {variant === 'resting' ? 'order' : 'fill'} — no
+                        real funds moved.
+                    </div>
+                )}
             </div>
             <div className="flex w-full gap-2">
                 {explorerHref && variant === 'filled' && (
                     <a
                         href={explorerHref}
                         target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-2 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
+                        rel="noopener noreferrer"
+                        className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-2 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800"
                     >
                         View tx
                         <ExternalLinkIcon className="size-3" />
@@ -728,7 +872,7 @@ function DoneStage({
                     onClick={onReset}
                     className={`flex-1 rounded-lg ${
                         variant === 'failed'
-                            ? 'bg-zinc-900 hover:bg-zinc-800'
+                            ? 'bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200'
                             : `${theme.bg} ${theme.bgHover}`
                     } px-3 py-2 text-xs font-semibold text-white transition-colors`}
                 >
@@ -741,12 +885,10 @@ function DoneStage({
 
 function SideTab({
     active,
-    activeClass,
     onClick,
     children,
 }: {
     active: boolean;
-    activeClass: string;
     onClick: () => void;
     children: ReactNode;
 }) {
@@ -754,9 +896,32 @@ function SideTab({
         <button
             type="button"
             onClick={onClick}
-            className={`rounded px-3 py-1.5 text-xs font-semibold transition-colors ${
-                active ? activeClass : 'text-zinc-500 hover:text-zinc-950'
+            className={`-mb-px border-b-2 pb-2 text-sm font-semibold transition-colors ${
+                active
+                    ? 'border-zinc-950 text-zinc-950 dark:border-zinc-50 dark:text-zinc-50'
+                    : 'border-transparent text-zinc-400 hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-300'
             }`}
+        >
+            {children}
+        </button>
+    );
+}
+
+function StepButton({
+    label,
+    onClick,
+    children,
+}: {
+    label: string;
+    onClick: () => void;
+    children: ReactNode;
+}) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            aria-label={label}
+            className="px-3 py-2 text-sm font-semibold text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
         >
             {children}
         </button>
@@ -777,7 +942,7 @@ function PillButton({
             type="button"
             onClick={onClick}
             disabled={disabled}
-            className="rounded-full border border-zinc-200 px-2 py-0.5 text-[10px] font-medium text-zinc-700 transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-full border border-zinc-200 px-2 py-0.5 text-[10px] font-medium text-zinc-700 transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800"
         >
             {children}
         </button>

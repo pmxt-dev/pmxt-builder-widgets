@@ -10,10 +10,13 @@ import { PriceChart } from './price-chart';
 import { OrderBookWidget } from './order-book';
 import { OrderTicket } from './order-ticket';
 
-export interface MarketWidgetProps {
+/** Props for {@link TradingPanel}. */
+export interface TradingPanelProps {
+    /** Market + outcome to display and trade. */
     market: PickedMarket;
     /** Hide the trading panel for a read-only embed. */
     readOnly?: boolean;
+    /** Called when an order reaches a terminal status. */
     onDone?: (order: PmxtOrder) => void;
     className?: string;
 }
@@ -25,12 +28,12 @@ type Tab = 'chart' | 'book';
  * and the non-custodial OrderTicket. One component, one market, everything
  * a builder needs.
  */
-export function MarketWidget({
+export function TradingPanel({
     market,
     readOnly = false,
     onDone,
     className = '',
-}: MarketWidgetProps) {
+}: TradingPanelProps) {
     const [tab, setTab] = useState<Tab>('chart');
     const theme = venueTheme(market.venue);
     const { data: book } = useOrderBook(market.venue, market.tokenId, { depth: 1 });
@@ -38,17 +41,17 @@ export function MarketWidget({
 
     return (
         <div
-            className={`overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-sm ${className}`}
+            className={`overflow-hidden rounded-2xl border border-zinc-200/80 bg-[var(--pmxt-surface,#ffffff)] shadow-sm dark:border-zinc-800 dark:bg-[var(--pmxt-surface-dark,#18181b)] ${className}`}
         >
-            <div className="flex items-start justify-between gap-3 border-b border-zinc-100 px-5 py-4">
+            <div className="flex items-start justify-between gap-3 border-b border-zinc-100 px-5 py-4 dark:border-zinc-800">
                 <div className="min-w-0">
                     <div className="mb-1.5 flex items-center gap-2">
                         <VenueBadge venue={market.venue} />
-                        <span className="text-[10px] uppercase tracking-wide text-zinc-400">
+                        <span className="text-[10px] uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
                             {market.outcome}
                         </span>
                     </div>
-                    <h2 className="truncate text-sm font-semibold text-zinc-950">
+                    <h2 className="truncate text-sm font-semibold text-zinc-950 dark:text-zinc-50">
                         {market.question}
                     </h2>
                 </div>
@@ -56,13 +59,13 @@ export function MarketWidget({
                     <div className={`font-mono text-2xl font-semibold ${theme.text}`}>
                         {formatPrice(livePrice)}
                     </div>
-                    <div className="text-[10px] text-zinc-400">last ask</div>
+                    <div className="text-[10px] text-zinc-400 dark:text-zinc-500">last ask</div>
                 </div>
             </div>
 
             <div className={`grid ${readOnly ? '' : 'md:grid-cols-[1fr_minmax(260px,320px)]'}`}>
                 <div className="p-5">
-                    <div className="mb-3 inline-flex gap-1 rounded-md bg-zinc-100 p-1">
+                    <div className="mb-3 inline-flex gap-1 rounded-md bg-zinc-100 p-1 dark:bg-zinc-800">
                         <TabButton active={tab === 'chart'} onClick={() => setTab('chart')}>
                             Chart
                         </TabButton>
@@ -87,7 +90,7 @@ export function MarketWidget({
                     )}
                 </div>
                 {!readOnly && (
-                    <div className="border-t border-zinc-100 p-5 md:border-l md:border-t-0">
+                    <div className="border-t border-zinc-100 p-5 dark:border-zinc-800 md:border-l md:border-t-0">
                         <OrderTicket market={market} onDone={onDone} />
                     </div>
                 )}
@@ -110,7 +113,9 @@ function TabButton({
             type="button"
             onClick={onClick}
             className={`rounded px-3 py-1 text-xs font-semibold transition-colors ${
-                active ? 'bg-white text-zinc-950 shadow-sm' : 'text-zinc-500 hover:text-zinc-950'
+                active
+                    ? 'bg-[var(--pmxt-surface,#ffffff)] text-zinc-950 shadow-sm dark:bg-[var(--pmxt-surface-dark,#18181b)] dark:text-zinc-50'
+                    : 'text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-50'
             }`}
         >
             {children}

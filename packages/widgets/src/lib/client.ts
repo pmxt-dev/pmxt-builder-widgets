@@ -6,7 +6,9 @@ import type {
     CancelRequest,
     CatalogVenue,
     ExecutionPrice,
+    EventCluster,
     MarketCluster,
+    MarketMatch,
     OrderBook,
     PmxtBalance,
     PmxtEvent,
@@ -110,7 +112,20 @@ export class PmxtClient {
         const res = await fetch(url, { ...init, headers, cache: 'no-store' });
         const text = await res.text();
         if (!res.ok) throw new PmxtApiError(res.status, text);
-        return (text ? JSON.parse(text) : undefined) as T;
+        if (!text) return undefined as T;
+        try {
+            return JSON.parse(text) as T;
+        } catch {
+            // A 200 with an HTML error page (gateway, captive portal, broken
+            // proxy) must surface as an actionable API error, not a raw
+            // SyntaxError bubbling into widget error states.
+            throw new PmxtApiError(
+                res.status,
+                JSON.stringify({
+                    error: `Server returned non-JSON response from ${url}`,
+                }),
+            );
+        }
     }
 
     private api<T>(path: string, init?: RequestInit): Promise<T> {
@@ -213,6 +228,32 @@ export class PmxtClient {
         return unwrapEnvelope<MarketCluster[]>(raw) ?? [];
     }
 
+    /**
+     * Query-filtered cross-venue market matches from the PMXT router
+     * (`/api/router/fetchMarketMatches`). Unlike the clusters endpoint,
+     * this one actually honors `query`.
+     */
+    async fetchMarketMatches(
+        opts: { query?: string; limit?: number } = {},
+    ): Promise<MarketMatch[]> {
+        const params = new URLSearchParams({ limit: String(opts.limit ?? 20) });
+        if (opts.query) params.set('query', opts.query);
+        const raw = await this.api<unknown>(
+            `/api/router/fetchMarketMatches?${params}`,
+        );
+        return unwrapEnvelope<MarketMatch[]>(raw) ?? [];
+    }
+
+    /** Cross-venue matched EVENTS from `/v0/matched-event-clusters`. */
+    async fetchEventClusters(
+        opts: { query?: string; limit?: number } = {},
+    ): Promise<EventCluster[]> {
+        const params = new URLSearchParams({ limit: String(opts.limit ?? 50) });
+        if (opts.query) params.set('q', opts.query);
+        const raw = await this.api<unknown>(`/v0/matched-event-clusters?${params}`);
+        return unwrapEnvelope<EventCluster[]>(raw) ?? [];
+    }
+
     // ---- Hosted trading (documented /v0 surface) ------------------------
 
     /** `POST /v0/trade/build-order` — returns EIP-712 typed data + a quote. */
@@ -280,11 +321,24 @@ export class PmxtClient {
     }
 }
 
-/** v0 reads return bare arrays today; tolerate `{key: [...]}` envelopes too. */
+/**
+ * v0 reads return bare arrays today; tolerate `{key: [...]}` envelopes too.
+ * Anything else throws — silently returning [] would make a failed fetch
+ * indistinguishable from a genuinely empty account ("No positions yet").
+ */
 function toArray<T>(raw: unknown, key: string): T[] {
+    if (raw == null) return [];
     if (Array.isArray(raw)) return raw as T[];
-    const wrapped = (raw as Record<string, unknown>)?.[key];
-    return Array.isArray(wrapped) ? (wrapped as T[]) : [];
+    if (typeof raw === 'object') {
+        const obj = raw as Record<string, unknown>;
+        const wrapped = obj[key];
+        if (Array.isArray(wrapped)) return wrapped as T[];
+        if (Object.keys(obj).length === 0) return [];
+    }
+    throw new PmxtApiError(
+        502,
+        JSON.stringify({ error: `Unexpected ${key} response shape` }),
+    );
 }
 
 function normalizeTrade(raw: unknown): PublicTrade | null {

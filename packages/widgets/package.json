@@ -9,20 +9,28 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
-    }
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",
-    "src"
+    "src",
+    "!src/**/*.test.ts"
   ],
   "sideEffects": false,
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prepublishOnly": "pnpm typecheck && pnpm test && tsup"
   },
   "peerDependencies": {
     "react": ">=18",
@@ -41,8 +49,16 @@
     "pmxt",
     "prediction-markets",
     "polymarket",
-    "kalshi",
+    "opinion",
     "react",
     "widgets"
-  ]
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pmxt-dev/pmxt-builder-widgets.git"
+  },
+  "homepage": "https://github.com/pmxt-dev/pmxt-builder-widgets#readme",
+  "bugs": {
+    "url": "https://github.com/pmxt-dev/pmxt-builder-widgets/issues"
+  }
 }

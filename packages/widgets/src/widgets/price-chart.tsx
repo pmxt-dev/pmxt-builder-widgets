@@ -6,14 +6,20 @@ import { formatPrice } from '../lib/format';
 import { SpinnerIcon, TrendDownIcon, TrendUpIcon } from '../lib/icons';
 import type { CatalogVenue } from '../lib/types';
 
+/** Props for {@link PriceChart}. */
 export interface PriceChartProps {
+    /** Venue the outcome trades on. */
     venue: CatalogVenue;
+    /** Outcome to chart; null skips fetching (loading state). */
     outcomeId: string | null;
     /** Candle resolution (default '1h'). */
     resolution?: string;
     /** Candles to fetch (default 100). */
     limit?: number;
-    /** Chart height in px (default 160). */
+    /**
+     * Fixed chart height in px. Omit to fill the container responsively
+     * (5:2 aspect ratio).
+     */
     height?: number;
     className?: string;
 }
@@ -33,7 +39,7 @@ export function PriceChart({
     outcomeId,
     resolution = '1h',
     limit = 100,
-    height = 160,
+    height,
     className = '',
 }: PriceChartProps) {
     // useId can contain colons, which break url(#…) references in some tooling.
@@ -42,14 +48,15 @@ export function PriceChart({
         resolution,
         limit,
     });
-    const candles = data ?? [];
+    // One non-finite close would poison min/max and the whole SVG path.
+    const candles = (data ?? []).filter((c) => Number.isFinite(c.close));
 
     if (loading) {
         return (
             <section
-                className={`rounded-xl border border-zinc-200/80 bg-white p-3 shadow-sm ${className}`}
+                className={`rounded-xl border border-zinc-200/80 bg-[var(--pmxt-surface,#ffffff)] p-3 shadow-sm dark:border-zinc-800 dark:bg-[var(--pmxt-surface-dark,#18181b)] ${className}`}
             >
-                <div className="flex items-center justify-center gap-2 py-10 text-xs text-zinc-500">
+                <div className="flex items-center justify-center gap-2 py-10 text-xs text-zinc-500 dark:text-zinc-400">
                     <SpinnerIcon /> Loading price history…
                 </div>
             </section>
@@ -58,9 +65,9 @@ export function PriceChart({
     if (error) {
         return (
             <section
-                className={`rounded-xl border border-zinc-200/80 bg-white p-3 shadow-sm ${className}`}
+                className={`rounded-xl border border-zinc-200/80 bg-[var(--pmxt-surface,#ffffff)] p-3 shadow-sm dark:border-zinc-800 dark:bg-[var(--pmxt-surface-dark,#18181b)] ${className}`}
             >
-                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
                     {error}
                 </div>
             </section>
@@ -69,9 +76,9 @@ export function PriceChart({
     if (candles.length < 2) {
         return (
             <section
-                className={`rounded-xl border border-zinc-200/80 bg-white p-3 shadow-sm ${className}`}
+                className={`rounded-xl border border-zinc-200/80 bg-[var(--pmxt-surface,#ffffff)] p-3 shadow-sm dark:border-zinc-800 dark:bg-[var(--pmxt-surface-dark,#18181b)] ${className}`}
             >
-                <div className="rounded-lg bg-zinc-50 px-3 py-6 text-center text-xs text-zinc-500">
+                <div className="rounded-lg bg-zinc-50 px-3 py-6 text-center text-xs text-zinc-500 dark:bg-zinc-800/50 dark:text-zinc-400">
                     Not enough history.
                 </div>
             </section>
@@ -100,21 +107,23 @@ export function PriceChart({
 
     return (
         <section
-            className={`rounded-xl border border-zinc-200/80 bg-white p-3 shadow-sm ${className}`}
+            className={`rounded-xl border border-zinc-200/80 bg-[var(--pmxt-surface,#ffffff)] p-3 shadow-sm dark:border-zinc-800 dark:bg-[var(--pmxt-surface-dark,#18181b)] ${className}`}
         >
             <div className="flex items-center justify-between px-1">
-                <span className="inline-flex items-center gap-1.5 rounded-md bg-zinc-100 px-2 py-1 font-mono text-xs font-semibold text-zinc-900">
+                <span className="inline-flex items-center gap-1.5 rounded-md bg-zinc-100 px-2 py-1 font-mono text-xs font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">
                     {formatPrice(lastClose)}
                     <span
                         className={`inline-flex items-center gap-0.5 text-[10px] ${
-                            up ? 'text-emerald-600' : 'text-red-600'
+                            up
+                                ? 'text-emerald-600 dark:text-emerald-400'
+                                : 'text-red-600 dark:text-red-400'
                         }`}
                     >
                         {up ? <TrendUpIcon /> : <TrendDownIcon />}
                         {(Math.abs(change) * 100).toFixed(1)}
                     </span>
                 </span>
-                <span className="text-[11px] text-zinc-500">{resolution}</span>
+                <span className="text-[11px] text-zinc-500 dark:text-zinc-400">{resolution}</span>
             </div>
 
             <div className="relative mt-2">
@@ -122,7 +131,7 @@ export function PriceChart({
                     viewBox="0 0 100 100"
                     preserveAspectRatio="none"
                     className="block w-full"
-                    style={{ height }}
+                    style={height != null ? { height } : { aspectRatio: '5 / 2' }}
                     aria-hidden="true"
                 >
                     <defs>
@@ -142,15 +151,15 @@ export function PriceChart({
                         vectorEffect="non-scaling-stroke"
                     />
                 </svg>
-                <span className="pointer-events-none absolute left-1 top-0 font-mono text-[10px] text-zinc-400">
+                <span className="pointer-events-none absolute left-1 top-0 font-mono text-[10px] text-zinc-400 dark:text-zinc-500">
                     {formatPrice(max)}
                 </span>
-                <span className="pointer-events-none absolute bottom-0 left-1 font-mono text-[10px] text-zinc-400">
+                <span className="pointer-events-none absolute bottom-0 left-1 font-mono text-[10px] text-zinc-400 dark:text-zinc-500">
                     {formatPrice(min)}
                 </span>
             </div>
 
-            <div className="mt-1 flex items-center justify-between px-1 text-[10px] text-zinc-400">
+            <div className="mt-1 flex items-center justify-between px-1 text-[10px] text-zinc-400 dark:text-zinc-500">
                 <span>{firstCandle ? formatCandleDate(firstCandle.timestamp) : ''}</span>
                 <span>{lastCandle ? formatCandleDate(lastCandle.timestamp) : ''}</span>
             </div>

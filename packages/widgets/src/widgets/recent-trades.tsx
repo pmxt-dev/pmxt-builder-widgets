@@ -5,8 +5,11 @@ import { formatPrice, formatTimeAgo } from '../lib/format';
 import { SpinnerIcon } from '../lib/icons';
 import type { CatalogVenue, PublicTrade } from '../lib/types';
 
+/** Props for {@link RecentTrades}. */
 export interface RecentTradesProps {
+    /** Venue the outcome trades on. */
     venue: CatalogVenue;
+    /** Outcome to show trades for; null skips fetching (loading state). */
     outcomeId: string | null;
     /** Trades to show (default 15). */
     limit?: number;
@@ -14,6 +17,7 @@ export interface RecentTradesProps {
 }
 
 function formatAmount(amount: number): string {
+    if (!Number.isFinite(amount)) return '—';
     if (amount >= 1_000) return Math.round(amount).toLocaleString('en-US');
     return Number.isInteger(amount) ? amount.toString() : amount.toFixed(2);
 }
@@ -30,33 +34,33 @@ export function RecentTrades({
 
     return (
         <section
-            className={`rounded-xl border border-zinc-200/80 bg-white p-3 shadow-sm ${className}`}
+            className={`rounded-xl border border-zinc-200/80 bg-[var(--pmxt-surface,#ffffff)] p-3 shadow-sm dark:border-zinc-800 dark:bg-[var(--pmxt-surface-dark,#18181b)] ${className}`}
         >
-            <div className="grid grid-cols-3 px-1 pb-1.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+            <div className="grid grid-cols-3 px-1 pb-1.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                 <span>Price</span>
                 <span className="text-right">Size</span>
                 <span className="text-right">Time</span>
             </div>
 
             {loading && (
-                <div className="flex items-center justify-center gap-2 py-10 text-xs text-zinc-500">
+                <div className="flex items-center justify-center gap-2 py-10 text-xs text-zinc-500 dark:text-zinc-400">
                     <SpinnerIcon /> Loading trades…
                 </div>
             )}
             {error && !loading && (
-                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
                     {error}
                 </div>
             )}
 
             {!loading && !error && trades.length === 0 && (
-                <div className="rounded-lg bg-zinc-50 px-3 py-6 text-center text-xs text-zinc-500">
+                <div className="rounded-lg bg-zinc-50 px-3 py-6 text-center text-xs text-zinc-500 dark:bg-zinc-800/50 dark:text-zinc-400">
                     No recent trades.
                 </div>
             )}
 
             {!loading && !error && trades.length > 0 && (
-                <div className="divide-y divide-zinc-100">
+                <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
                     {trades.map((trade, i) => (
                         <TradeRow key={i} trade={trade} />
                     ))}
@@ -72,13 +76,13 @@ function TradeRow({ trade }: { trade: PublicTrade }) {
             ? 'bg-emerald-500'
             : trade.side === 'sell'
               ? 'bg-red-500'
-              : 'bg-zinc-300';
+              : 'bg-zinc-300 dark:bg-zinc-600';
     const priceClass =
         trade.side === 'buy'
-            ? 'text-emerald-600'
+            ? 'text-emerald-600 dark:text-emerald-400'
             : trade.side === 'sell'
-              ? 'text-red-600'
-              : 'text-zinc-900';
+              ? 'text-red-600 dark:text-red-400'
+              : 'text-zinc-900 dark:text-zinc-100';
 
     return (
         <div className="grid grid-cols-3 items-center px-1 py-1.5">
@@ -88,10 +92,10 @@ function TradeRow({ trade }: { trade: PublicTrade }) {
                     {formatPrice(trade.price)}
                 </span>
             </span>
-            <span className="text-right font-mono text-xs text-zinc-700">
+            <span className="text-right font-mono text-xs text-zinc-700 dark:text-zinc-300">
                 {formatAmount(trade.amount)}
             </span>
-            <span className="text-right text-[11px] text-zinc-500">
+            <span className="text-right text-[11px] text-zinc-500 dark:text-zinc-400">
                 {formatTimeAgo(trade.timestamp)}
             </span>
         </div>

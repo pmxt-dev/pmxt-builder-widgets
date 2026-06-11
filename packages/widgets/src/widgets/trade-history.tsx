@@ -7,6 +7,7 @@ import { ExternalLinkIcon, SpinnerIcon } from '../lib/icons';
 import { VenueBadge } from './venue-badge';
 import type { PmxtUserTrade } from '../lib/types';
 
+/** Props for {@link TradeHistory}. */
 export interface TradeHistoryProps {
     /** Address to show trades for; defaults to the connected wallet. */
     address?: `0x${string}`;
@@ -29,9 +30,9 @@ export function TradeHistory({
 
     return (
         <section
-            className={`overflow-hidden rounded-xl border border-zinc-200/80 bg-white shadow-sm ${className}`}
+            className={`overflow-hidden rounded-xl border border-zinc-200/80 bg-[var(--pmxt-surface,#ffffff)] shadow-sm dark:border-zinc-800 dark:bg-[var(--pmxt-surface-dark,#18181b)] ${className}`}
         >
-            <header className="border-b border-zinc-100 px-4 py-3 text-sm font-semibold text-zinc-950">
+            <header className="border-b border-zinc-100 px-4 py-3 text-sm font-semibold text-zinc-950 dark:border-zinc-800 dark:text-zinc-50">
                 Trade history
             </header>
 
@@ -41,23 +42,23 @@ export function TradeHistory({
                         type="button"
                         onClick={() => void wallet.connect()}
                         disabled={wallet.connecting}
-                        className="w-full rounded-lg bg-zinc-900 px-3 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="w-full rounded-lg bg-zinc-900 px-3 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
                     >
                         {wallet.connecting ? 'Connecting…' : 'Connect wallet'}
                     </button>
                 </div>
             ) : loading && !data ? (
                 <div className="flex items-center justify-center p-6">
-                    <SpinnerIcon className="size-4 text-zinc-400" />
+                    <SpinnerIcon className="size-4 text-zinc-400 dark:text-zinc-500" />
                 </div>
             ) : error ? (
-                <div className="px-4 py-3 text-xs text-red-600">{error}</div>
+                <div className="px-4 py-3 text-xs text-red-600 dark:text-red-400">{error}</div>
             ) : trades.length === 0 ? (
-                <div className="px-4 py-6 text-center text-xs text-zinc-500">
+                <div className="px-4 py-6 text-center text-xs text-zinc-500 dark:text-zinc-400">
                     No trades yet.
                 </div>
             ) : (
-                <ul className="divide-y divide-zinc-100">
+                <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
                     {trades.map((trade, i) => (
                         <TradeRow key={trade.id ?? i} trade={trade} />
                     ))}
@@ -77,10 +78,10 @@ function TradeRow({ trade }: { trade: PmxtUserTrade }) {
 
     const sideClass =
         trade.side === 'buy'
-            ? 'bg-emerald-50 text-emerald-700'
+            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
             : trade.side === 'sell'
-              ? 'bg-red-50 text-red-700'
-              : 'bg-zinc-100 text-zinc-600';
+              ? 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300'
+              : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300';
 
     return (
         <li className="flex items-center gap-3 px-4 py-2.5">
@@ -91,16 +92,16 @@ function TradeRow({ trade }: { trade: PmxtUserTrade }) {
                 {trade.side ?? '—'}
             </span>
             <div className="min-w-0 flex-1">
-                <div className="text-sm text-zinc-950">
-                    <span className="font-mono text-zinc-700">
+                <div className="text-sm text-zinc-950 dark:text-zinc-50">
+                    <span className="font-mono text-zinc-700 dark:text-zinc-300">
                         {formatShares(shares)}
                     </span>{' '}
                     @{' '}
-                    <span className="font-mono text-zinc-700">
+                    <span className="font-mono text-zinc-700 dark:text-zinc-300">
                         {formatPrice(trade.price)}
                     </span>
                 </div>
-                <div className="text-[11px] text-zinc-500">
+                <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
                     {formatTimeAgo(trade.timestamp)}
                 </div>
             </div>
@@ -109,7 +110,7 @@ function TradeRow({ trade }: { trade: PmxtUserTrade }) {
                     href={explorerHref}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-zinc-500 transition-colors hover:text-zinc-950"
+                    className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-zinc-500 transition-colors hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-50"
                 >
                     tx
                     <ExternalLinkIcon className="size-3" />

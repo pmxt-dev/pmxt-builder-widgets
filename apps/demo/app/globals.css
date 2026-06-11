@@ -2,6 +2,9 @@
 
 @source "../../../packages/widgets/src";
 
+/* Class-based dark mode so the header toggle (not the OS) decides. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme inline {
     --font-sans: var(--font-geist-sans);
     --font-mono: var(--font-geist-mono);
@@ -10,6 +13,12 @@
 :root {
     --background: #fafafa;
     --foreground: #0a0a0a;
+}
+
+/* :root.dark outranks :root — plain .dark ties and loses on order. */
+:root.dark {
+    --background: #09090b;
+    --foreground: #fafafa;
 }
 
 body {

@@ -3,10 +3,13 @@ import type { NextRequest } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 /**
- * Server-side proxy to the PMXT trading API (trade.pmxt.dev). The API key is
- * attached here so it never reaches the browser. Orders are EIP-712-signed
- * client-side by the user's wallet, so the key only authenticates the app —
- * it cannot move user funds.
+ * Server-side proxy to the PMXT trading API (trade.pmxt.dev).
+ *
+ * Live trading is bring-your-own-key: the request must carry the user's
+ * `Authorization: Bearer <PMXT_API_KEY>` (entered in the widget settings).
+ * The demo's own server key is never used for trading, so visitors can't
+ * trade on the house. Orders are EIP-712-signed client-side by the user's
+ * wallet, so the key only authenticates the app — it cannot move funds.
  *
  * Strict allowlist per method; everything else is a 404.
  */
@@ -42,13 +45,13 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<Respo
         return Response.json({ error: 'Not found' }, { status: 404 });
     }
 
-    const apiKey = process.env.PMXT_API_KEY;
-    if (!apiKey) {
+    const authorization = request.headers.get('authorization');
+    if (!authorization) {
         return Response.json(
             {
-                error: 'PMXT_API_KEY is not configured. Copy apps/demo/.env.example to apps/demo/.env.local and set your key from https://pmxt.dev/dashboard.',
+                error: 'Live trading needs your PMXT API key — add it in the widget settings. Get one at https://pmxt.dev/dashboard.',
             },
-            { status: 500 },
+            { status: 401 },
         );
     }
 
@@ -58,7 +61,7 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<Respo
     const init: RequestInit = {
         method: request.method,
         headers: {
-            Authorization: `Bearer ${apiKey}`,
+            Authorization: authorization,
             'Content-Type': 'application/json',
         },
         cache: 'no-store',

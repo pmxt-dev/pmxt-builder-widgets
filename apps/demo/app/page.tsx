@@ -1,10 +1,5 @@
-import { Showcase } from '@/components/showcase';
-import { Providers } from './providers';
+import { Catalog } from '@/components/catalog';
 
 export default function Home() {
-    return (
-        <Providers>
-            <Showcase />
-        </Providers>
-    );
+    return <Catalog />;
 }

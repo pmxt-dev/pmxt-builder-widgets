@@ -16,12 +16,6 @@
       "description": "Balance Card widget for PMXT prediction markets."
     },
     {
-      "name": "cross-venue-compare",
-      "type": "registry:component",
-      "title": "Cross Venue Compare",
-      "description": "Cross Venue Compare widget for PMXT prediction markets."
-    },
-    {
       "name": "event-card",
       "type": "registry:component",
       "title": "Event Card",
@@ -32,6 +26,12 @@
       "type": "registry:component",
       "title": "Execution Quote",
       "description": "Execution Quote widget for PMXT prediction markets."
+    },
+    {
+      "name": "inline-trade-panel",
+      "type": "registry:component",
+      "title": "Inline Trade Panel",
+      "description": "Inline Trade Panel widget for PMXT prediction markets."
     },
     {
       "name": "market-card",
@@ -52,10 +52,10 @@
       "description": "Market Ticker widget for PMXT prediction markets."
     },
     {
-      "name": "market-widget",
+      "name": "matched-markets",
       "type": "registry:component",
-      "title": "Market Widget",
-      "description": "Market Widget widget for PMXT prediction markets."
+      "title": "Matched Markets",
+      "description": "Matched Markets widget for PMXT prediction markets."
     },
     {
       "name": "open-orders-table",
@@ -76,10 +76,10 @@
       "description": "Order Ticket widget for PMXT prediction markets."
     },
     {
-      "name": "positions-table",
+      "name": "positions",
       "type": "registry:component",
-      "title": "Positions Table",
-      "description": "Positions Table widget for PMXT prediction markets."
+      "title": "Positions",
+      "description": "Positions widget for PMXT prediction markets."
     },
     {
       "name": "price-chart",
@@ -100,16 +100,22 @@
       "description": "Recent Trades widget for PMXT prediction markets."
     },
     {
+      "name": "top-markets",
+      "type": "registry:component",
+      "title": "Top Markets",
+      "description": "Top Markets widget for PMXT prediction markets."
+    },
+    {
       "name": "trade-history",
       "type": "registry:component",
       "title": "Trade History",
       "description": "Trade History widget for PMXT prediction markets."
     },
     {
-      "name": "trending-markets",
+      "name": "trading-panel",
       "type": "registry:component",
-      "title": "Trending Markets",
-      "description": "Trending Markets widget for PMXT prediction markets."
+      "title": "Trading Panel",
+      "description": "Trading Panel widget for PMXT prediction markets."
     },
     {
       "name": "venue-badge",

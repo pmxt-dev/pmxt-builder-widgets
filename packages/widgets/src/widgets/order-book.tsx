@@ -5,8 +5,11 @@ import { formatPrice } from '../lib/format';
 import { SpinnerIcon } from '../lib/icons';
 import type { CatalogVenue, OrderBookLevel } from '../lib/types';
 
+/** Props for {@link OrderBookWidget}. */
 export interface OrderBookWidgetProps {
+    /** Venue whose order book to show. */
     venue: CatalogVenue;
+    /** Outcome to show; null skips fetching (loading state). */
     outcomeId: string | null;
     /** Levels to show per side (default 8). */
     depth?: number;
@@ -60,26 +63,26 @@ export function OrderBookWidget({
 
     return (
         <section
-            className={`rounded-xl border border-zinc-200/80 bg-white p-3 shadow-sm ${className}`}
+            className={`rounded-xl border border-zinc-200/80 bg-[var(--pmxt-surface,#ffffff)] p-3 shadow-sm dark:border-zinc-800 dark:bg-[var(--pmxt-surface-dark,#18181b)] ${className}`}
         >
-            <div className="flex items-center justify-between px-1 pb-1.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+            <div className="flex items-center justify-between px-1 pb-1.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                 <span>Price</span>
                 <span>Size</span>
             </div>
 
             {loading && (
-                <div className="flex items-center justify-center gap-2 py-10 text-xs text-zinc-500">
+                <div className="flex items-center justify-center gap-2 py-10 text-xs text-zinc-500 dark:text-zinc-400">
                     <SpinnerIcon /> Loading order book…
                 </div>
             )}
             {error && !loading && (
-                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
                     {error}
                 </div>
             )}
 
             {!loading && !error && empty && (
-                <div className="rounded-lg bg-zinc-50 px-3 py-6 text-center text-xs text-zinc-500">
+                <div className="rounded-lg bg-zinc-50 px-3 py-6 text-center text-xs text-zinc-500 dark:bg-zinc-800/50 dark:text-zinc-400">
                     No liquidity at this depth.
                 </div>
             )}
@@ -95,16 +98,16 @@ export function OrderBookWidget({
                         />
                     ))}
 
-                    <div className="my-1 flex items-center justify-between border-y border-zinc-100 px-1 py-1.5 text-[11px] text-zinc-500">
+                    <div className="my-1 flex items-center justify-between border-y border-zinc-100 px-1 py-1.5 text-[11px] text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
                         <span>
                             Spread{' '}
-                            <span className="font-mono font-semibold text-zinc-900">
+                            <span className="font-mono font-semibold text-zinc-900 dark:text-zinc-100">
                                 {spread != null ? `${(spread * 100).toFixed(1)}¢` : '—'}
                             </span>
                         </span>
                         <span>
                             Mid{' '}
-                            <span className="font-mono font-semibold text-zinc-900">
+                            <span className="font-mono font-semibold text-zinc-900 dark:text-zinc-100">
                                 {formatPrice(mid)}
                             </span>
                         </span>
@@ -140,18 +143,22 @@ function LevelRow({
             <div
                 aria-hidden="true"
                 className={`absolute inset-y-0 right-0 rounded-sm ${
-                    isBid ? 'bg-emerald-50' : 'bg-red-50'
+                    isBid
+                        ? 'bg-emerald-50 dark:bg-emerald-950/40'
+                        : 'bg-red-50 dark:bg-red-950/40'
                 }`}
                 style={{ width: `${width}%` }}
             />
             <span
                 className={`relative font-mono text-xs font-semibold ${
-                    isBid ? 'text-emerald-600' : 'text-red-600'
+                    isBid
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : 'text-red-600 dark:text-red-400'
                 }`}
             >
                 {formatPrice(level.price)}
             </span>
-            <span className="relative font-mono text-xs text-zinc-700">
+            <span className="relative font-mono text-xs text-zinc-700 dark:text-zinc-300">
                 {formatSize(level.size)}
             </span>
         </div>

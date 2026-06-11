@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
+import { Providers } from './providers';
 
 const geistSans = Geist({
     variable: '--font-geist-sans',
@@ -25,7 +26,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <body
                 className={`${geistSans.variable} ${geistMono.variable} antialiased`}
             >
-                {children}
+                {/* Provider lives in the layout so the wallet connection and
+                    sandbox portfolio persist across client-side navigation. */}
+                <Providers>{children}</Providers>
             </body>
         </html>
     );

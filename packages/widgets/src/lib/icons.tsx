@@ -47,6 +47,43 @@ export function ChevronLeftIcon({ className = 'size-4' }: IconProps) {
     );
 }
 
+/** Green dollar-bill mark used next to payout labels (enterprise style). */
+export function DollarIcon({ className = 'size-3.5' }: IconProps) {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+            <rect x="1" y="5" width="22" height="14" rx="2.5" fill="#16a34a" />
+            <rect x="3" y="7" width="18" height="10" rx="1.5" fill="none" stroke="#bbf7d0" strokeWidth="1.2" />
+            <circle cx="12" cy="12" r="3.6" fill="#15803d" />
+            <text
+                x="12"
+                y="14.6"
+                textAnchor="middle"
+                fontSize="7.5"
+                fontWeight="bold"
+                fill="#dcfce7"
+            >
+                $
+            </text>
+        </svg>
+    );
+}
+
+export function ChevronUpIcon({ className = 'size-4' }: IconProps) {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+            <path d="m18 15-6-6-6 6" />
+        </svg>
+    );
+}
+
+export function ChevronDownIcon({ className = 'size-4' }: IconProps) {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+            <path d="m6 9 6 6 6-6" />
+        </svg>
+    );
+}
+
 export function ExternalLinkIcon({ className = 'size-3' }: IconProps) {
     return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">

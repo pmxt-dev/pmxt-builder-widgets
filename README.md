@@ -1,6 +1,8 @@
 # PMXT Builder Widgets
 
-Copy-paste React components for building on prediction markets. Search markets, render orderbooks and charts, and run a full non-custodial buy/sell flow — across Polymarket, Kalshi, Limitless, Opinion and more — powered by the [PMXT](https://pmxt.dev) unified API.
+Copy-paste React components for building on prediction markets. Search markets, render orderbooks and charts, and run a full non-custodial buy/sell flow — Polymarket and Opinion today, more venues as PMXT escrow expands — powered by the [PMXT](https://pmxt.dev) unified API.
+
+Every discovery widget is interactive out of the box: click an outcome and the card expands into a live buy/sell ticket in place. Wire your own `onPickOutcome`/`onClick` only when you want a custom flow.
 
 Built for the **PMXT Builders Programme**. Two ways to consume:
 
@@ -19,18 +21,20 @@ Built for the **PMXT Builders Programme**. Two ways to consume:
 ## Quickstart
 
 ```tsx
-import { PmxtProvider, MarketSearch, OrderTicket } from 'pmxt-widgets';
+import { PmxtProvider, MarketSearch } from 'pmxt-widgets';
 
 export default function App() {
     return (
         <PmxtProvider config={{ apiUrl: '/api/pmxt', tradeUrl: '/api/trade' }}>
-            <MarketSearch venues={['polymarket', 'kalshi']} onPick={...} />
+            {/* Picking a result renders an expanded, tradable card below
+                the input — zero wiring. Pass onPick for a custom flow. */}
+            <MarketSearch venues={['polymarket', 'opinion']} />
         </PmxtProvider>
     );
 }
 ```
 
-`apiUrl`/`tradeUrl` should point at thin server-side proxies that attach your `Authorization: Bearer <PMXT_API_KEY>` header — never ship the key to the browser. The demo app ships reference proxy routes you can copy (`apps/demo/app/api/pmxt`, `apps/demo/app/api/trade`).
+**Every widget bills against a PMXT API key** — get one at [pmxt.dev/dashboard](https://pmxt.dev/dashboard). `apiUrl`/`tradeUrl` should point at thin server-side proxies that attach your `Authorization: Bearer <PMXT_API_KEY>` header — never ship the key to the browser. The demo app ships reference proxy routes you can copy (`apps/demo/app/api/pmxt`, `apps/demo/app/api/trade`); the demo's trade proxy forwards the visitor's own key (entered in widget settings) so live trading always runs on the visitor's PMXT account.
 
 Tailwind users installing from npm: add the package source to your content scan:
 
@@ -43,24 +47,49 @@ Tailwind users installing from npm: add the package source to your content scan:
 
 | Tier | Widget | What it does |
 | --- | --- | --- |
-| Discovery | `MarketSearch` | Debounced search with venue selector + results dropdown |
-| Discovery | `TrendingMarkets` | Top markets by volume with venue tabs |
+| Discovery | `MarketSearch` | Unified search across every venue in parallel, with a Markets/Events toggle |
+| Discovery | `TopMarkets` | Top markets or events, ranked by 24h volume / all-time volume / liquidity, with venue tabs |
 | Discovery | `MarketCard` / `EventCard` | Single market / event with clickable outcome prices |
 | Discovery | `MarketTicker` | Scrolling price marquee for headers |
-| Discovery | `CrossVenueCompare` | Same market matched across venues with price spread |
+| Discovery | `MatchedMarkets` | Same market matched across venues with price spread |
 | Discovery | `VenueBadge` / `PriceChip` | Primitives: venue chip, price pill with 24h trend |
 | Market data | `OrderBookWidget` | Live bid/ask ladder with depth bars |
 | Market data | `PriceChart` | OHLCV close-price chart (pure SVG, zero deps) |
 | Market data | `ExecutionQuote` | VWAP quote for a given size, walked from the live book |
 | Market data | `RecentTrades` | Public trade feed |
 | Trading | `OrderTicket` | Full buy/sell: quote → EIP-712 sign → submit (market + limit) |
+| Trading | `InlineTradePanel` | Outcome tabs + compact OrderTicket — the built-in expand-to-trade panel the discovery cards render |
 | Trading | `BalanceCard` | USDC escrow balance |
-| Trading | `PositionsTable` | Held outcome tokens with one-click sell |
+| Trading | `Positions` | Held outcome tokens with one-click sell |
 | Trading | `OpenOrdersTable` | Resting limit orders with signed cancel |
 | Trading | `TradeHistory` | Past fills with explorer links |
-| Composite | `MarketWidget` | Card + chart + book + ticket in one embed |
+| Composite | `TradingPanel` | Card + chart + book + ticket in one embed |
 
 All widgets are self-contained: React 18+, Tailwind classes, zero runtime dependencies (no react-query, no chart libs, no icon packs). Data flows through `PmxtProvider` → tiny built-in polling hooks.
+
+## Theming
+
+Widgets ship light + dark styles (Tailwind class-based dark mode — add `dark` to any ancestor) and read their accent colors from CSS variables you can override in your stylesheet:
+
+```css
+:root {
+    --pmxt-accent: #2563eb;    /* CTA buttons & venue accent  */
+    --pmxt-positive: #059669;  /* Yes/buy states & payouts    */
+    --pmxt-negative: #dc2626;  /* No/sell states              */
+}
+```
+
+Confetti on filled orders is on by default — `<OrderTicket confetti={false} />` to disable (always respects `prefers-reduced-motion`).
+
+## Sandbox mode
+
+Add one prop and every trading widget runs on play money:
+
+```tsx
+<PmxtProvider config={config} sandbox>
+```
+
+Market data stays live, but trading is fully simulated: a built-in demo wallet, $1,000 of starting USDC, quotes walked from the real order book, and in-memory fills that flow through `BalanceCard`, `Positions`, `OpenOrdersTable` and `TradeHistory`. No order ever reaches the trading API — tickets show a Sandbox badge and fills are labelled simulated. Perfect for demos, onboarding, and trying the widgets before funding escrow. (Filled orders also get a confetti burst — `fireConfetti`/`fireTradeConfetti` are exported if you want it elsewhere.)
 
 ## Trading model
 

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePmxt } from './provider';
 import type {
     CatalogVenue,
+    EventCluster,
     MarketCluster,
     OrderBook,
     PmxtBalance,
@@ -16,13 +17,19 @@ import type {
     PublicTrade,
 } from './lib/types';
 
+/** Return shape of every data hook. */
 export interface QueryState<T> {
+    /** Last successful result; null until the first fetch resolves. */
     data: T | null;
+    /** Message from the most recent failed fetch; cleared on success. */
     error: string | null;
+    /** True while the initial fetch is in flight. */
     loading: boolean;
+    /** Re-run the fetch immediately. */
     refetch: () => void;
 }
 
+/** Options accepted by `usePmxtQuery`. */
 export interface QueryOptions {
     /** Re-fetch on an interval (ms). Omit for fetch-once. */
     refetchInterval?: number;
@@ -77,6 +84,7 @@ export function usePmxtQuery<T>(
     return { data, error, loading, refetch: run };
 }
 
+/** Returns `value` once it has been stable for `delayMs` (default 300ms). */
 export function useDebounced<T>(value: T, delayMs = 300): T {
     const [debounced, setDebounced] = useState(value);
     useEffect(() => {
@@ -88,18 +96,73 @@ export function useDebounced<T>(value: T, delayMs = 300): T {
 
 // ---- Data hooks ---------------------------------------------------------
 
+/**
+ * Catalog events (with nested markets) for a venue, optionally filtered by
+ * `query`. Polls every 60s by default.
+ */
 export function useEvents(
     venue: CatalogVenue,
-    opts: { limit?: number; query?: string; refetchInterval?: number } = {},
+    opts: {
+        limit?: number;
+        query?: string;
+        refetchInterval?: number;
+        enabled?: boolean;
+    } = {},
 ): QueryState<PmxtEvent[]> {
     const { client } = usePmxt();
     return usePmxtQuery(
         ['events', venue, opts.limit, opts.query],
         () => client.fetchEvents(venue, opts),
-        { refetchInterval: opts.refetchInterval ?? 60_000 },
+        {
+            refetchInterval: opts.refetchInterval ?? 60_000,
+            enabled: opts.enabled ?? true,
+        },
     );
 }
 
+/**
+ * Events from every venue in parallel, merged into one list. A venue that
+ * errors is skipped (partial results beat none); errors only when every
+ * venue fails. Polls every 60s.
+ */
+export function useUnifiedEvents(
+    venues: CatalogVenue[],
+    opts: { limit?: number; enabled?: boolean } = {},
+): QueryState<VenueEvent[]> {
+    const { client } = usePmxt();
+    return usePmxtQuery(
+        ['unified-events', venues.join(','), opts.limit],
+        async () => {
+            const settled = await Promise.allSettled(
+                venues.map(async (venue) => {
+                    const events = await client.fetchEvents(venue, {
+                        limit: opts.limit ?? 10,
+                    });
+                    return events.map((event) => ({ venue, event }));
+                }),
+            );
+            const hits = settled
+                .filter(
+                    (r): r is PromiseFulfilledResult<VenueEvent[]> =>
+                        r.status === 'fulfilled',
+                )
+                .flatMap((r) => r.value);
+            if (
+                hits.length === 0 &&
+                settled.every((r) => r.status === 'rejected')
+            ) {
+                throw new Error('Every venue failed to load');
+            }
+            return hits;
+        },
+        { refetchInterval: 60_000, enabled: opts.enabled ?? true },
+    );
+}
+
+/**
+ * Catalog market search on one venue. Skips fetching while `query` is
+ * empty/whitespace; fetch-once (no polling). Default limit 20.
+ */
 export function useMarketSearch(
     venue: CatalogVenue,
     query: string,
@@ -113,6 +176,103 @@ export function useMarketSearch(
     );
 }
 
+/** One unified-search hit: the market plus the venue it was found on. */
+export interface VenueMarket {
+    venue: CatalogVenue;
+    market: PmxtMarket;
+}
+
+/** One unified-search hit: the event plus the venue it was found on. */
+export interface VenueEvent {
+    venue: CatalogVenue;
+    event: PmxtEvent;
+}
+
+/**
+ * Unified market search: queries every venue in parallel and merges the
+ * results by 24h volume. A venue that errors is skipped (partial results
+ * beat none); the hook only errors when every venue fails. Skips fetching
+ * while `query` is empty.
+ */
+export function useUnifiedMarketSearch(
+    venues: CatalogVenue[],
+    query: string,
+    opts: { limit?: number; enabled?: boolean } = {},
+): QueryState<VenueMarket[]> {
+    const { client } = usePmxt();
+    return usePmxtQuery(
+        ['unified-market-search', venues.join(','), query, opts.limit],
+        async () => {
+            const settled = await Promise.allSettled(
+                venues.map(async (venue) => {
+                    const markets = await client.fetchMarkets(venue, {
+                        query,
+                        limit: opts.limit ?? 10,
+                    });
+                    return markets.map((market) => ({ venue, market }));
+                }),
+            );
+            const hits = settled
+                .filter(
+                    (r): r is PromiseFulfilledResult<VenueMarket[]> =>
+                        r.status === 'fulfilled',
+                )
+                .flatMap((r) => r.value);
+            if (hits.length === 0 && settled.every((r) => r.status === 'rejected')) {
+                throw new Error('Search failed on every venue');
+            }
+            return hits.sort(
+                (a, b) =>
+                    (b.market.volume24h ?? 0) - (a.market.volume24h ?? 0),
+            );
+        },
+        { enabled: (opts.enabled ?? true) && query.trim().length > 0 },
+    );
+}
+
+/**
+ * Unified event search: like {@link useUnifiedMarketSearch} but for events
+ * (grouped markets) across every venue in parallel.
+ */
+export function useUnifiedEventSearch(
+    venues: CatalogVenue[],
+    query: string,
+    opts: { limit?: number; enabled?: boolean } = {},
+): QueryState<VenueEvent[]> {
+    const { client } = usePmxt();
+    return usePmxtQuery(
+        ['unified-event-search', venues.join(','), query, opts.limit],
+        async () => {
+            const settled = await Promise.allSettled(
+                venues.map(async (venue) => {
+                    const events = await client.fetchEvents(venue, {
+                        query,
+                        limit: opts.limit ?? 10,
+                    });
+                    return events.map((event) => ({ venue, event }));
+                }),
+            );
+            const hits = settled
+                .filter(
+                    (r): r is PromiseFulfilledResult<VenueEvent[]> =>
+                        r.status === 'fulfilled',
+                )
+                .flatMap((r) => r.value);
+            if (hits.length === 0 && settled.every((r) => r.status === 'rejected')) {
+                throw new Error('Search failed on every venue');
+            }
+            return hits.sort(
+                (a, b) => (b.event.volume24h ?? 0) - (a.event.volume24h ?? 0),
+            );
+        },
+        { enabled: (opts.enabled ?? true) && query.trim().length > 0 },
+    );
+}
+
+/**
+ * Live order book for an outcome. Skips fetching while `outcomeId` is null;
+ * polls every 15s by default. Default depth 10 levels per side.
+ */
 export function useOrderBook(
     venue: CatalogVenue,
     outcomeId: string | null,
@@ -129,6 +289,10 @@ export function useOrderBook(
     );
 }
 
+/**
+ * OHLCV price candles for an outcome. Skips fetching while `outcomeId` is
+ * null; polls every 60s.
+ */
 export function useOHLCV(
     venue: CatalogVenue,
     outcomeId: string | null,
@@ -142,6 +306,10 @@ export function useOHLCV(
     );
 }
 
+/**
+ * Recent public trades for an outcome. Skips fetching while `outcomeId` is
+ * null; polls every 20s.
+ */
 export function usePublicTrades(
     venue: CatalogVenue,
     outcomeId: string | null,
@@ -155,17 +323,109 @@ export function usePublicTrades(
     );
 }
 
+/**
+ * Cross-venue matched market clusters, optionally filtered by `query`.
+ * Polls every 60s.
+ */
 export function useClusters(
-    opts: { query?: string; limit?: number } = {},
+    opts: { query?: string; limit?: number; enabled?: boolean } = {},
 ): QueryState<MarketCluster[]> {
     const { client } = usePmxt();
     return usePmxtQuery(
         ['clusters', opts.query, opts.limit],
-        () => client.fetchClusters(opts),
-        { refetchInterval: 60_000 },
+        async () => {
+            // Fetch broad, filter locally — the endpoint ignores `q`.
+            const clusters = await client.fetchClusters({
+                limit: Math.max(opts.limit ?? 50, 50),
+            });
+            const q = opts.query?.trim().toLowerCase();
+            if (!q) return clusters;
+            return clusters.filter(
+                (c) =>
+                    c.canonicalTitle.toLowerCase().includes(q) ||
+                    c.markets.some((m) => m.title.toLowerCase().includes(q)),
+            );
+        },
+        { refetchInterval: 60_000, enabled: opts.enabled ?? true },
     );
 }
 
+/**
+ * Query-filtered cross-venue matched markets via the PMXT router, shaped
+ * as MarketClusters for {@link MatchedMarketRow}. Skips fetching while
+ * `query` is empty. (The clusters endpoint ignores its `q` param — the
+ * router actually filters.)
+ */
+export function useMatchedMarketSearch(
+    query: string,
+    opts: { limit?: number; enabled?: boolean } = {},
+): QueryState<MarketCluster[]> {
+    const { client } = usePmxt();
+    return usePmxtQuery(
+        ['matched-market-search', query, opts.limit],
+        async () => {
+            const matches = await client.fetchMarketMatches({
+                query,
+                limit: opts.limit ?? 20,
+            });
+            const seen = new Set<string>();
+            const clusters: MarketCluster[] = [];
+            for (const match of matches) {
+                const markets = [match.sourceMarket, match.market].filter(
+                    (m): m is MarketCluster['markets'][number] =>
+                        m?.sourceExchange != null,
+                );
+                if (markets.length < 2) continue;
+                const title = markets[0]?.title ?? match.market.title;
+                const key = markets
+                    .map((m) => `${m.sourceExchange}:${m.marketId}`)
+                    .sort()
+                    .join('|');
+                if (seen.has(key)) continue;
+                seen.add(key);
+                clusters.push({
+                    canonicalTitle: title,
+                    markets,
+                    confidence: match.confidence,
+                });
+            }
+            return clusters;
+        },
+        { enabled: (opts.enabled ?? true) && query.trim().length > 0 },
+    );
+}
+
+/**
+ * Cross-venue matched EVENT clusters, optionally filtered by `query`
+ * (applied client-side — the endpoint does not filter). Polls every 60s.
+ */
+export function useEventClusters(
+    opts: { query?: string; limit?: number; enabled?: boolean } = {},
+): QueryState<EventCluster[]> {
+    const { client } = usePmxt();
+    return usePmxtQuery(
+        ['event-clusters', opts.query, opts.limit],
+        async () => {
+            // Fetch broad, filter locally — the endpoint ignores `q`.
+            const clusters = await client.fetchEventClusters({
+                limit: Math.max(opts.limit ?? 50, 50),
+            });
+            const q = opts.query?.trim().toLowerCase();
+            if (!q) return clusters;
+            return clusters.filter(
+                (c) =>
+                    c.canonicalTitle.toLowerCase().includes(q) ||
+                    c.events.some((e) => e.title.toLowerCase().includes(q)),
+            );
+        },
+        { refetchInterval: 60_000, enabled: opts.enabled ?? true },
+    );
+}
+
+/**
+ * PMXT escrow balances for an address. Skips fetching while `address` is
+ * null (e.g. wallet not connected); polls every 15s by default.
+ */
 export function useBalances(
     address: string | null,
     opts: { refetchInterval?: number } = {},
@@ -181,6 +441,10 @@ export function useBalances(
     );
 }
 
+/**
+ * Open positions for an address from the /v0 trading API. Skips fetching
+ * while `address` is null; polls every 15s by default.
+ */
 export function usePositions(
     address: string | null,
     opts: { refetchInterval?: number } = {},
@@ -196,6 +460,10 @@ export function usePositions(
     );
 }
 
+/**
+ * Resting (open) orders for an address. Skips fetching while `address` is
+ * null; polls every 15s.
+ */
 export function useOpenOrders(address: string | null): QueryState<PmxtOrder[]> {
     const { client } = usePmxt();
     return usePmxtQuery(
@@ -205,6 +473,10 @@ export function useOpenOrders(address: string | null): QueryState<PmxtOrder[]> {
     );
 }
 
+/**
+ * Recent fills for an address. Skips fetching while `address` is null;
+ * polls every 30s.
+ */
 export function useUserTrades(
     address: string | null,
     limit?: number,

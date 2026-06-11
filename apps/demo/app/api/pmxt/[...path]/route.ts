@@ -9,11 +9,13 @@ export const dynamic = 'force-dynamic';
  * Only read-only catalog endpoints are forwarded; everything else is a 404.
  */
 const CATALOG_METHOD_PATTERN =
-    /^api\/[a-z0-9_-]+\/(fetchMarkets|fetchMarketsPaginated|fetchMarket|fetchEvents|fetchEventsPaginated|fetchEvent|fetchOrderBook|fetchOHLCV|fetchTrades|getExecutionPrice)$/;
+    /^api\/[a-z0-9_-]+\/(fetchMarkets|fetchMarketsPaginated|fetchMarket|fetchEvents|fetchEventsPaginated|fetchEvent|fetchOrderBook|fetchOHLCV|fetchTrades|fetchMarketMatches|fetchEventMatches|getExecutionPrice)$/;
 
 function isAllowedPath(path: string): boolean {
     return (
-        CATALOG_METHOD_PATTERN.test(path) || path === 'v0/matched-market-clusters'
+        CATALOG_METHOD_PATTERN.test(path) ||
+        path === 'v0/matched-market-clusters' ||
+        path === 'v0/matched-event-clusters'
     );
 }
 
@@ -29,8 +31,14 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<Respo
         return Response.json({ error: 'Not found' }, { status: 404 });
     }
 
-    const apiKey = process.env.PMXT_API_KEY;
-    if (!apiKey) {
+    // Visitors with their own key use their quota; otherwise the demo's
+    // server key covers read-only catalog previews.
+    const authorization =
+        request.headers.get('authorization') ??
+        (process.env.PMXT_API_KEY
+            ? `Bearer ${process.env.PMXT_API_KEY}`
+            : null);
+    if (!authorization) {
         return Response.json(
             {
                 error: 'PMXT_API_KEY is not configured. Copy apps/demo/.env.example to apps/demo/.env.local and set your key from https://pmxt.dev/dashboard.',
@@ -45,7 +53,7 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<Respo
     const init: RequestInit = {
         method: request.method,
         headers: {
-            Authorization: `Bearer ${apiKey}`,
+            Authorization: authorization,
             'Content-Type': 'application/json',
         },
         cache: 'no-store',

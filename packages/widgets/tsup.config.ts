@@ -7,4 +7,8 @@ export default defineConfig({
     sourcemap: true,
     clean: true,
     external: ['react', 'react-dom'],
+    // tsup strips the per-file directives when bundling; without this every
+    // Next.js App Router consumer crashes (createContext in a Server
+    // Component).
+    banner: { js: "'use client';" },
 });

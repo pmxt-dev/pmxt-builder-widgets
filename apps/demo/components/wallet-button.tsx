@@ -1,10 +1,17 @@
 'use client';
 
 import { usePmxtWallet } from 'pmxt-widgets';
+import { useSandboxMode } from '../app/providers';
 
-/** Connect/disconnect button driven by the PmxtProvider wallet state. */
+/**
+ * Wallet state for the header. Hidden entirely in sandbox mode — the
+ * per-widget settings panel owns the sandbox story; the nav stays clean.
+ */
 export function WalletButton() {
     const { address, connecting, connect, disconnect } = usePmxtWallet();
+    const { sandbox } = useSandboxMode();
+
+    if (sandbox) return null;
 
     if (address) {
         return (

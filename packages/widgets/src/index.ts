@@ -1,11 +1,17 @@
 // Provider & context
-export { PmxtProvider, usePmxt, usePmxtWallet } from './provider';
+export { PmxtProvider, usePmxt, usePmxtOptional, usePmxtWallet } from './provider';
 export type { PmxtProviderProps, PmxtWalletState } from './provider';
 
 // Client & helpers
 export { PmxtClient, PmxtApiError, getExecutionPrice, unwrapEnvelope } from './lib/client';
 export type { PmxtClientConfig } from './lib/client';
-export { toPickedMarket } from './lib/convert';
+export {
+    marketNo,
+    marketQuestion,
+    marketYes,
+    outcomeDisplayLabel,
+    toPickedMarket,
+} from './lib/convert';
 export {
     createInjectedSigner,
     getInjectedProvider,
@@ -17,6 +23,15 @@ export {
 export type { Eip1193Provider, PmxtSigner } from './lib/wallet';
 export { venueTheme, isTradableVenue, TRADABLE_VENUES } from './lib/venues';
 export type { VenueTheme } from './lib/venues';
+export {
+    SandboxPmxtClient,
+    SandboxSession,
+    SANDBOX_ADDRESS,
+    SANDBOX_STARTING_BALANCE_USDC,
+} from './lib/sandbox';
+export type { SandboxAnnotation, SandboxSessionOptions } from './lib/sandbox';
+export { fireConfetti, fireTradeConfetti } from './lib/confetti';
+export type { ConfettiOptions } from './lib/confetti';
 export * from './lib/format';
 export * from './lib/types';
 
@@ -25,17 +40,26 @@ export {
     usePmxtQuery,
     useDebounced,
     useEvents,
+    useUnifiedEvents,
     useMarketSearch,
+    useUnifiedMarketSearch,
+    useUnifiedEventSearch,
     useOrderBook,
     useOHLCV,
     usePublicTrades,
     useClusters,
+    useEventClusters,
     useBalances,
     usePositions,
     useOpenOrders,
     useUserTrades,
 } from './hooks';
-export type { QueryState, QueryOptions } from './hooks';
+export type {
+    QueryState,
+    QueryOptions,
+    VenueMarket,
+    VenueEvent,
+} from './hooks';
 
 // Display widgets
 export { VenueBadge } from './widgets/venue-badge';
@@ -48,12 +72,18 @@ export { EventCard } from './widgets/event-card';
 export type { EventCardProps } from './widgets/event-card';
 export { MarketSearch } from './widgets/market-search';
 export type { MarketSearchProps } from './widgets/market-search';
-export { TrendingMarkets } from './widgets/trending-markets';
-export type { TrendingMarketsProps } from './widgets/trending-markets';
+export { TopMarkets } from './widgets/top-markets';
+export type { TopMarketsProps } from './widgets/top-markets';
 export { MarketTicker } from './widgets/market-ticker';
 export type { MarketTickerProps } from './widgets/market-ticker';
-export { CrossVenueCompare } from './widgets/cross-venue-compare';
-export type { CrossVenueCompareProps } from './widgets/cross-venue-compare';
+export {
+    MatchedMarkets,
+    MatchedMarketRow,
+} from './widgets/matched-markets';
+export type {
+    MatchedMarketsProps,
+    MatchedMarketRowProps,
+} from './widgets/matched-markets';
 
 // Data widgets
 export { OrderBookWidget } from './widgets/order-book';
@@ -68,15 +98,17 @@ export type { RecentTradesProps } from './widgets/recent-trades';
 // Trading widgets
 export { OrderTicket } from './widgets/order-ticket';
 export type { OrderTicketProps } from './widgets/order-ticket';
+export { InlineTradePanel } from './widgets/inline-trade-panel';
+export type { InlineTradePanelProps } from './widgets/inline-trade-panel';
 export { BalanceCard } from './widgets/balance-card';
 export type { BalanceCardProps } from './widgets/balance-card';
-export { PositionsTable } from './widgets/positions-table';
-export type { PositionsTableProps } from './widgets/positions-table';
+export { Positions } from './widgets/positions';
+export type { PositionsProps } from './widgets/positions';
 export { OpenOrdersTable } from './widgets/open-orders-table';
 export type { OpenOrdersTableProps } from './widgets/open-orders-table';
 export { TradeHistory } from './widgets/trade-history';
 export type { TradeHistoryProps } from './widgets/trade-history';
 
 // Composite
-export { MarketWidget } from './widgets/market-widget';
-export type { MarketWidgetProps } from './widgets/market-widget';
+export { TradingPanel } from './widgets/trading-panel';
+export type { TradingPanelProps } from './widgets/trading-panel';
