@@ -1,0 +1,64 @@
+{
+  "name": "pmxt-widgets",
+  "version": "0.5.0",
+  "description": "Copy-paste React widgets for building on PMXT — prediction market search, orderbooks, charts, and a full non-custodial buy/sell flow.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "src",
+    "!src/**/*.test.ts"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "prepublishOnly": "pnpm typecheck && pnpm test && tsup"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
+  "keywords": [
+    "pmxt",
+    "prediction-markets",
+    "polymarket",
+    "opinion",
+    "react",
+    "widgets"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pmxt-dev/pmxt-builder-widgets.git"
+  },
+  "homepage": "https://github.com/pmxt-dev/pmxt-builder-widgets#readme",
+  "bugs": {
+    "url": "https://github.com/pmxt-dev/pmxt-builder-widgets/issues"
+  }
+}
