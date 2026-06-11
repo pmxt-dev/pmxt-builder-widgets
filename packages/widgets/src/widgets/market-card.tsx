@@ -7,7 +7,7 @@ import {
     marketYes,
     outcomeDisplayLabel,
 } from '../lib/convert';
-import { formatVolume, safeImageUrl } from '../lib/format';
+import { formatExpiry, formatVolume, safeImageUrl } from '../lib/format';
 import { ChevronDownIcon } from '../lib/icons';
 import { isTradableVenue, venueTheme } from '../lib/venues';
 import { usePmxtOptional } from '../provider';
@@ -108,6 +108,7 @@ export function MarketCard({
     const question = marketQuestion(market.title, eventTitle);
     const context =
         eventTitle && eventTitle.trim() !== question ? eventTitle.trim() : null;
+    const expiry = formatExpiry(market.resolutionDate);
 
     return (
         <article
@@ -135,6 +136,17 @@ export function MarketCard({
                     <div className="mt-1 flex items-center gap-2 text-[11px] text-zinc-500 dark:text-zinc-400">
                         <VenueBadge venue={resolvedVenue} />
                         <span>{formatVolume(market.volume24h)} 24h vol</span>
+                        {expiry && (
+                            <span
+                                className={
+                                    expiry.expired
+                                        ? 'font-medium text-red-600 dark:text-red-400'
+                                        : ''
+                                }
+                            >
+                                {expiry.label}
+                            </span>
+                        )}
                     </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">

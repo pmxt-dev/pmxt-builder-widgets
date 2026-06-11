@@ -72,6 +72,50 @@ export function formatTimeAgo(input: string | number | null | undefined): string
     return `${days}d ago`;
 }
 
+const MONTHS = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
+/** Result of {@link formatExpiry}: display label plus expired flag. */
+export interface ExpiryInfo {
+    /** e.g. "Ends in 3d", "Ends Jul 20", "Ended Mar 26". */
+    label: string;
+    /** True when the close time is in the past. */
+    expired: boolean;
+}
+
+/**
+ * Market close/resolution time as a compact label. Near closes render as a
+ * countdown ("Ends in 5h"); a week or more out shows the calendar date, with
+ * the year appended when it isn't the current year. Returns null for missing
+ * or unparseable input so callers can skip rendering entirely.
+ */
+export function formatExpiry(
+    input: string | number | null | undefined,
+): ExpiryInfo | null {
+    if (input == null) return null;
+    const ts = typeof input === 'string' ? Date.parse(input) : input;
+    if (!Number.isFinite(ts)) return null;
+
+    const now = Date.now();
+    const date = new Date(ts);
+    const day = `${MONTHS[date.getUTCMonth()]} ${date.getUTCDate()}`;
+    const year = date.getUTCFullYear();
+    const dateLabel =
+        year === new Date(now).getUTCFullYear() ? day : `${day}, ${year}`;
+
+    if (ts <= now) return { label: `Ended ${dateLabel}`, expired: true };
+
+    const mins = Math.floor((ts - now) / 60_000);
+    if (mins < 60) return { label: `Ends in ${Math.max(mins, 1)}m`, expired: false };
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return { label: `Ends in ${hours}h`, expired: false };
+    const days = Math.floor(hours / 24);
+    if (days < 7) return { label: `Ends in ${days}d`, expired: false };
+    return { label: `Ends ${dateLabel}`, expired: false };
+}
+
 /**
  * Widgets embed on third-party sites, so only render catalog images served
  * over https — anything else (data:, http:, garbage) is dropped.

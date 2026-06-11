@@ -64,6 +64,8 @@ export interface PmxtMarket {
     liquidity: number;
     /** Minimum price increment; null when the venue doesn't report one. */
     tickSize: number | null;
+    /** ISO trading-close/resolution time; null when the venue reports none. */
+    resolutionDate: string | null;
     /** Venue-reported status (e.g. "active"); null when unknown. */
     status: string | null;
     /** On-chain contract address; null when not applicable. */

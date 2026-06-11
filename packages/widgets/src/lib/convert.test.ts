@@ -24,6 +24,7 @@ function makeMarket(overrides: Partial<PmxtMarket> = {}): PmxtMarket {
         volume24h: 100,
         liquidity: 500,
         tickSize: 0.01,
+        resolutionDate: null,
         status: 'open',
         contractAddress: null,
         outcomes: [],

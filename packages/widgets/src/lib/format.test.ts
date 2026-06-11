@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+    formatExpiry,
     formatPercent,
     formatPrice,
     formatTimeAgo,
@@ -180,5 +181,75 @@ describe('venueLabel', () => {
         expect(venueLabel(null)).toBe('Unknown');
         expect(venueLabel(undefined)).toBe('Unknown');
         expect(venueLabel('')).toBe('Unknown');
+    });
+});
+
+describe('formatExpiry', () => {
+    const NOW = Date.parse('2026-06-10T12:00:00.000Z');
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    function freezeNow(): void {
+        vi.spyOn(Date, 'now').mockReturnValue(NOW);
+    }
+
+    it('returns null for null, undefined, and unparseable input', () => {
+        expect(formatExpiry(null)).toBeNull();
+        expect(formatExpiry(undefined)).toBeNull();
+        expect(formatExpiry('not a date')).toBeNull();
+    });
+
+    it('marks past dates as expired with the date shown', () => {
+        freezeNow();
+        expect(formatExpiry('2026-03-26T19:45:00.000Z')).toEqual({
+            label: 'Ended Mar 26',
+            expired: true,
+        });
+    });
+
+    it('renders minutes for closes under an hour away', () => {
+        freezeNow();
+        expect(formatExpiry(NOW + 32 * 60_000)).toEqual({
+            label: 'Ends in 32m',
+            expired: false,
+        });
+    });
+
+    it('renders hours for closes under a day away', () => {
+        freezeNow();
+        expect(formatExpiry(NOW + 5 * 3_600_000)).toEqual({
+            label: 'Ends in 5h',
+            expired: false,
+        });
+    });
+
+    it('renders days for closes under a week away', () => {
+        freezeNow();
+        expect(formatExpiry(NOW + 3 * 86_400_000)).toEqual({
+            label: 'Ends in 3d',
+            expired: false,
+        });
+    });
+
+    it('renders the calendar date for closes a week or more away', () => {
+        freezeNow();
+        expect(formatExpiry('2026-07-20T00:00:00.000Z')).toEqual({
+            label: 'Ends Jul 20',
+            expired: false,
+        });
+    });
+
+    it('includes the year when it differs from the current year', () => {
+        freezeNow();
+        expect(formatExpiry('2027-03-26T00:00:00.000Z')).toEqual({
+            label: 'Ends Mar 26, 2027',
+            expired: false,
+        });
+        expect(formatExpiry('2025-05-16T00:00:00.000Z')).toEqual({
+            label: 'Ended May 16, 2025',
+            expired: true,
+        });
     });
 });
