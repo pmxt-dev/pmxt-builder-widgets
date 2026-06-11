@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePmxt } from './provider';
 import type {
     CatalogVenue,
+    EscrowBalancesResponse,
     EventCluster,
     MarketCluster,
     OrderBook,
@@ -15,6 +16,7 @@ import type {
     PmxtUserTrade,
     PriceCandle,
     PublicTrade,
+    WithdrawalsResponse,
 } from './lib/types';
 
 /** Return shape of every data hook. */
@@ -437,6 +439,46 @@ export function useBalances(
         {
             enabled: !!address,
             refetchInterval: opts.refetchInterval ?? 15_000,
+        },
+    );
+}
+
+/**
+ * Detailed escrow balances (USDC + wrapped outcome tokens) for an address.
+ * Skips fetching while `address` is null; polls every 15s by default.
+ */
+export function useEscrowBalances(
+    address: string | null,
+    opts: { refetchInterval?: number } = {},
+): QueryState<EscrowBalancesResponse> {
+    const { client } = usePmxt();
+    return usePmxtQuery(
+        ['escrow-balances', address],
+        () => client.fetchEscrowBalances(address as string),
+        {
+            enabled: !!address,
+            refetchInterval: opts.refetchInterval ?? 15_000,
+        },
+    );
+}
+
+/**
+ * Timelocked-withdrawal state for an address: the pending withdrawal and/or
+ * lifecycle events. Skips fetching while `address` is null; polls every 10s
+ * by default.
+ */
+export function useWithdrawals(
+    address: string | null,
+    include: 'pending' | 'events' | 'pending,events' = 'pending,events',
+    opts: { refetchInterval?: number } = {},
+): QueryState<WithdrawalsResponse> {
+    const { client } = usePmxt();
+    return usePmxtQuery(
+        ['withdrawals', address, include],
+        () => client.fetchWithdrawals(address as string, include),
+        {
+            enabled: !!address,
+            refetchInterval: opts.refetchInterval ?? 10_000,
         },
     );
 }

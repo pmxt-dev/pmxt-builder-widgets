@@ -15,10 +15,15 @@ export {
 export {
     createInjectedSigner,
     getInjectedProvider,
+    readErc20Allowance,
     requestAccounts,
+    sendTransaction,
     signTypedData,
     switchChain,
+    waitForTransactionReceipt,
+    MICRO_USDC,
     POLYGON_CHAIN_ID,
+    USDC_E_ADDRESS,
 } from './lib/wallet';
 export type { Eip1193Provider, PmxtSigner } from './lib/wallet';
 export { venueTheme, isTradableVenue, TRADABLE_VENUES } from './lib/venues';
@@ -50,6 +55,8 @@ export {
     useClusters,
     useEventClusters,
     useBalances,
+    useEscrowBalances,
+    useWithdrawals,
     usePositions,
     useOpenOrders,
     useUserTrades,
@@ -102,6 +109,8 @@ export { InlineTradePanel } from './widgets/inline-trade-panel';
 export type { InlineTradePanelProps } from './widgets/inline-trade-panel';
 export { BalanceCard } from './widgets/balance-card';
 export type { BalanceCardProps } from './widgets/balance-card';
+export { WalletPanel } from './widgets/wallet-panel';
+export type { WalletPanelProps } from './widgets/wallet-panel';
 export { Positions } from './widgets/positions';
 export type { PositionsProps } from './widgets/positions';
 export { OpenOrdersTable } from './widgets/open-orders-table';

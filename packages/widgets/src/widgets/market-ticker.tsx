@@ -26,7 +26,7 @@ export function MarketTicker({
     onPick,
     className = '',
 }: MarketTickerProps) {
-    const { data } = useEvents(venue, { limit });
+    const { data, error } = useEvents(venue, { limit });
     const entries = (data ?? [])
         .map((event) => {
             const market = [...event.markets].sort(
@@ -48,6 +48,15 @@ export function MarketTicker({
         .filter((e): e is NonNullable<typeof e> => e !== null);
 
     if (entries.length === 0) {
+        if (error && !data) {
+            return (
+                <div
+                    className={`flex h-9 items-center truncate rounded-lg border border-zinc-200/80 bg-zinc-50 px-4 text-xs text-red-600 dark:border-zinc-800 dark:bg-zinc-800/50 dark:text-red-400 ${className}`}
+                >
+                    {error}
+                </div>
+            );
+        }
         return (
             <div
                 className={`h-9 animate-pulse rounded-lg border border-zinc-200/80 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-800/50 ${className}`}

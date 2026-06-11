@@ -18,17 +18,28 @@ const POST_PATHS = new Set([
     'v0/trade/submit-order',
     'v0/orders/cancel/build',
     'v0/orders/cancel',
+    // Escrow funding: build endpoints return unsigned txs the user's own
+    // wallet must sign — the key alone cannot move funds.
+    'escrow/build-approve',
+    'escrow/build-deposit',
+    'escrow/build-withdrawal',
 ]);
 
-const GET_PATHS = new Set(['v0/orders/open']);
+const GET_PATHS = new Set(['v0/orders/open', 'user/escrow-balances']);
 
 const USER_SCOPED_PATTERN =
     /^v0\/user\/0x[0-9a-fA-F]{40}\/(balances|positions|trades)$/;
 
+const WITHDRAWALS_PATTERN = /^escrow\/withdrawals\/0x[0-9a-fA-F]{40}$/;
+
 function isAllowed(path: string, method: string): boolean {
     if (method === 'POST') return POST_PATHS.has(path);
     if (method === 'GET') {
-        return GET_PATHS.has(path) || USER_SCOPED_PATTERN.test(path);
+        return (
+            GET_PATHS.has(path) ||
+            USER_SCOPED_PATTERN.test(path) ||
+            WITHDRAWALS_PATTERN.test(path)
+        );
     }
     return false;
 }

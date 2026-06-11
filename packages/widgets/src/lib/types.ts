@@ -434,3 +434,67 @@ export interface PickedMarket {
     /** Catalog outcome UUID, when known. */
     outcomeUuid?: string;
 }
+
+// ---- Escrow funding (deposit / withdraw) --------------------------------
+
+/** An unsigned EVM transaction returned by the escrow build endpoints. */
+export interface UnsignedTx {
+    to: `0x${string}`;
+    /** Wei value as a decimal string ("0" for escrow calls). */
+    value: string;
+    data: `0x${string}`;
+    chainId: number;
+}
+
+/** Response of `/escrow/build-approve|build-deposit|build-withdrawal`. */
+export interface BuildTxResponse {
+    tx: UnsignedTx;
+}
+
+/** The single in-flight timelocked withdrawal for an address. */
+export interface PendingWithdrawal {
+    amount_wei: number;
+    amount_usdc: number;
+    /** Unix timestamp when the withdrawal becomes claimable. */
+    claimable_at: number;
+    is_claimable: boolean;
+}
+
+/** One historical withdrawal lifecycle event. */
+export interface WithdrawalEvent {
+    type: 'requested' | 'claimed' | 'cancelled';
+    amount_wei: number;
+    amount_usdc: number;
+    tx_hash: `0x${string}`;
+    block_number: number;
+    claimable_at: number | null;
+}
+
+/** Response of `/escrow/withdrawals/{address}`. */
+export interface WithdrawalsResponse {
+    address: string;
+    pending?: PendingWithdrawal;
+    events?: WithdrawalEvent[];
+}
+
+/** Response of `/user/escrow-balances`. */
+export interface EscrowBalancesResponse {
+    address: string;
+    usdc: {
+        escrow_balance_wei: number;
+        escrow_balance_tokens: number;
+    };
+    tokens: Array<{
+        wrapped_address: string;
+        token_id: string | null;
+        venue: string | null;
+        wrapped_symbol: string | null;
+        market_title: string | null;
+        outcome_name: string | null;
+        market_id: number | null;
+        escrow_balance_wei: number;
+        escrow_balance_tokens: number;
+    }>;
+    size: number;
+    from: number;
+}

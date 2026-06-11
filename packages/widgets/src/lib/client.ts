@@ -1,10 +1,12 @@
 import type {
     BuildOrderRequest,
+    BuildTxResponse,
     BuiltOrder,
     CancelBuildRequest,
     CancelBuildResponse,
     CancelRequest,
     CatalogVenue,
+    EscrowBalancesResponse,
     ExecutionPrice,
     EventCluster,
     MarketCluster,
@@ -19,6 +21,7 @@ import type {
     PriceCandle,
     PublicTrade,
     SubmitOrderRequest,
+    WithdrawalsResponse,
 } from './types';
 
 export interface PmxtClientConfig {
@@ -318,6 +321,72 @@ export class PmxtClient {
             method: 'POST',
             body: JSON.stringify(body),
         });
+    }
+
+    // ---- Escrow funding (deposit / withdraw) ----------------------------
+
+    /** `POST /escrow/build-approve` — unsigned ERC-20 approve tx for the escrow. */
+    buildApprove(body: {
+        token: 'usdc' | 'ctf';
+        user_address: string;
+        amount_wei?: number;
+    }): Promise<BuildTxResponse> {
+        return this.trade<BuildTxResponse>('/escrow/build-approve', {
+            method: 'POST',
+            body: JSON.stringify(body),
+        });
+    }
+
+    /** `POST /escrow/build-deposit` — unsigned deposit tx into PreFundedEscrow. */
+    buildDeposit(body: {
+        token: string;
+        amount: number;
+        user_address?: string;
+    }): Promise<BuildTxResponse> {
+        return this.trade<BuildTxResponse>('/escrow/build-deposit', {
+            method: 'POST',
+            body: JSON.stringify(body),
+        });
+    }
+
+    /**
+     * `POST /escrow/build-withdrawal` — unsigned tx for the timelocked
+     * withdrawal lifecycle: `request` starts it, `claim` completes it once
+     * the timelock elapses, `cancel` aborts it.
+     */
+    buildWithdrawal(body: {
+        action: 'request' | 'claim' | 'cancel';
+        amount?: number;
+        user_address?: string;
+    }): Promise<BuildTxResponse> {
+        return this.trade<BuildTxResponse>('/escrow/build-withdrawal', {
+            method: 'POST',
+            body: JSON.stringify(body),
+        });
+    }
+
+    /** `GET /escrow/withdrawals/{address}` — pending withdrawal and/or events. */
+    fetchWithdrawals(
+        address: string,
+        include: 'pending' | 'events' | 'pending,events' = 'pending,events',
+    ): Promise<WithdrawalsResponse> {
+        return this.trade<WithdrawalsResponse>(
+            `/escrow/withdrawals/${encodeURIComponent(address)}?include=${include}`,
+        );
+    }
+
+    /** `GET /user/escrow-balances` — USDC + wrapped-token escrow balances. */
+    fetchEscrowBalances(
+        address: string,
+        tokenAddress = 'all',
+    ): Promise<EscrowBalancesResponse> {
+        const params = new URLSearchParams({
+            address,
+            token_address: tokenAddress,
+        });
+        return this.trade<EscrowBalancesResponse>(
+            `/user/escrow-balances?${params}`,
+        );
     }
 }
 

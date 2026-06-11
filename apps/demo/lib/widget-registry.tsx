@@ -11,6 +11,7 @@ import {
     PriceChart,
     TopMarkets,
     TradingPanel,
+    WalletPanel,
     useEvents,
 } from 'pmxt-widgets';
 import type { PickedMarket, TradingVenue } from 'pmxt-widgets';
@@ -546,6 +547,29 @@ export const WIDGETS: WidgetDef[] = [
         render: () => <Positions />,
         preview: () => <Positions />,
         code: () => importLine(['Positions']) + '<Positions />',
+    },
+    {
+        slug: 'wallet-panel',
+        name: 'Wallet Panel',
+        tier: 'Trading',
+        blurb: 'Fund the PMXT escrow: deposit USDC (smart approve included) and run the timelocked withdraw → claim flow, with live balance and history.',
+        controls: [
+            {
+                kind: 'boolean',
+                prop: 'showHistory',
+                label: 'Show history',
+                default: true,
+                help: 'List past withdrawal events (requested / claimed / cancelled) below the forms.',
+            },
+        ],
+        render: (s) => <WalletPanel showHistory={s.showHistory as boolean} />,
+        preview: () => <WalletPanel showHistory={false} />,
+        code: function (s) {
+            return (
+                importLine(['WalletPanel']) +
+                jsx('WalletPanel', this.controls, s)
+            );
+        },
     },
     {
         slug: 'trading-panel',
