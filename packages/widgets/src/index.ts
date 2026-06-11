@@ -14,6 +14,7 @@ export {
 } from './lib/convert';
 export {
     createInjectedSigner,
+    detectWallets,
     getInjectedProvider,
     readErc20Allowance,
     requestAccounts,
@@ -23,9 +24,13 @@ export {
     waitForTransactionReceipt,
     MICRO_USDC,
     POLYGON_CHAIN_ID,
+    SUPPORTED_WALLETS,
     USDC_E_ADDRESS,
+    WALLET_LABELS,
 } from './lib/wallet';
-export type { Eip1193Provider, PmxtSigner } from './lib/wallet';
+export type { Eip1193Provider, PmxtSigner, WalletId } from './lib/wallet';
+export { ConnectWalletButtons } from './lib/connect-buttons';
+export type { ConnectWalletButtonsProps } from './lib/connect-buttons';
 export { venueTheme, isTradableVenue, TRADABLE_VENUES } from './lib/venues';
 export type { VenueTheme } from './lib/venues';
 export {

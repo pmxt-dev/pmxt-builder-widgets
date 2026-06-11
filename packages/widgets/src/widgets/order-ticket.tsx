@@ -10,6 +10,7 @@ import {
 } from 'react';
 import { useOrderBook, usePositions } from '../hooks';
 import { usePmxt } from '../provider';
+import { ConnectWalletButtons } from '../lib/connect-buttons';
 import { fireTradeConfetti } from '../lib/confetti';
 import { formatPrice, formatUsd, round2, truncate4 } from '../lib/format';
 import { venueTheme } from '../lib/venues';
@@ -568,16 +569,9 @@ export function OrderTicket({
 
                                 {!address ? (
                                     <div className="space-y-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => void wallet.connect()}
-                                            disabled={wallet.connecting}
-                                            className={`w-full rounded-xl ${theme.bg} ${theme.bgHover} px-3 py-3 text-sm font-bold text-white shadow-[0_3px_0_rgba(0,0,0,0.25)] transition-all active:translate-y-[2px] active:shadow-none disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none`}
-                                        >
-                                            {wallet.connecting
-                                                ? 'Connecting…'
-                                                : 'Connect MetaMask'}
-                                        </button>
+                                        <ConnectWalletButtons
+                                            buttonClassName={`w-full rounded-xl ${theme.bg} ${theme.bgHover} px-3 py-3 text-sm font-bold text-white shadow-[0_3px_0_rgba(0,0,0,0.25)] transition-all active:translate-y-[2px] active:shadow-none disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none`}
+                                        />
                                         {wallet.connectError && (
                                             <div className="text-center text-xs text-red-600 dark:text-red-400">
                                                 {wallet.connectError}

@@ -18,6 +18,7 @@ import {
     switchChain,
     waitForTransactionReceipt,
     type Eip1193Provider,
+    type WalletId,
 } from '../lib/wallet';
 import {
     PAY_TOKENS,
@@ -29,6 +30,7 @@ import {
 } from '../lib/swap';
 import { shortAddress } from '../lib/format';
 import { ChevronDownIcon, SpinnerIcon } from '../lib/icons';
+import { ConnectWalletButtons } from '../lib/connect-buttons';
 
 /** Props for {@link WalletPanel}. */
 export interface WalletPanelProps {
@@ -89,14 +91,7 @@ export function WalletPanel({ showHistory = true, className = '' }: WalletPanelP
                     Connect a Polygon wallet to deposit USDC into your PMXT escrow
                     and fund trading.
                 </p>
-                <button
-                    type="button"
-                    onClick={() => void wallet.connect()}
-                    disabled={wallet.connecting}
-                    className={primaryBtn}
-                >
-                    {wallet.connecting ? 'Connecting…' : 'Connect MetaMask'}
-                </button>
+                <ConnectWalletButtons buttonClassName={primaryBtn} />
                 {wallet.connectError && (
                     <div className="mt-2 text-xs text-red-600 dark:text-red-400">
                         {wallet.connectError}
@@ -219,8 +214,10 @@ function Header() {
 
 // ---- Shared tx plumbing ---------------------------------------------------
 
-async function getWalletProvider(): Promise<Eip1193Provider> {
-    const provider = getInjectedProvider();
+async function getWalletProvider(
+    walletId?: WalletId,
+): Promise<Eip1193Provider> {
+    const provider = getInjectedProvider(walletId);
     await switchChain(provider, POLYGON_CHAIN_ID);
     return provider;
 }
@@ -255,6 +252,7 @@ interface FormProps {
 }
 
 function DepositForm({ client, address, onDone }: FormProps) {
+    const { walletId } = usePmxtWallet();
     const [amount, setAmount] = useState('');
     const [stage, setStage] = useState<DepositStage>({ name: 'idle' });
     const [paySymbol, setPaySymbol] = useState('USDC.e');
@@ -292,7 +290,7 @@ function DepositForm({ client, address, onDone }: FormProps) {
         if (amountNum <= 0) return;
 
         try {
-            const provider = await getWalletProvider();
+            const provider = await getWalletProvider(walletId ?? undefined);
 
             // 0. Pay-with-any-token: swap the selected token to USDC.e via
             // the KyberSwap aggregator first, then deposit the proceeds.
@@ -433,7 +431,7 @@ function DepositForm({ client, address, onDone }: FormProps) {
         }
     }
 
-    const balances = usePayTokenBalances(address, stage.name === 'done');
+    const balances = usePayTokenBalances(address, stage.name === 'done', walletId ?? undefined);
     const balance = balances.get(payToken.symbol);
     const estimate = useSwapEstimate(payToken, amountNum, isDirect);
 
@@ -513,6 +511,7 @@ function DepositForm({ client, address, onDone }: FormProps) {
 function usePayTokenBalances(
     address: `0x${string}`,
     refreshSignal: boolean,
+    walletId?: WalletId,
 ): Map<string, bigint> {
     const [balances, setBalances] = useState<Map<string, bigint>>(new Map());
 
@@ -521,7 +520,7 @@ function usePayTokenBalances(
         (async () => {
             let provider: Eip1193Provider;
             try {
-                provider = getInjectedProvider();
+                provider = getInjectedProvider(walletId);
             } catch {
                 return;
             }
@@ -760,6 +759,7 @@ type WithdrawStage =
     | { name: 'error'; message: string };
 
 function WithdrawForm({ client, address, onDone }: FormProps) {
+    const { walletId } = usePmxtWallet();
     const [amount, setAmount] = useState('');
     const [stage, setStage] = useState<WithdrawStage>({ name: 'idle' });
 
@@ -775,7 +775,7 @@ function WithdrawForm({ client, address, onDone }: FormProps) {
         if (amountNum <= 0) return;
 
         try {
-            const provider = await getWalletProvider();
+            const provider = await getWalletProvider(walletId ?? undefined);
 
             setStage({ name: 'building' });
             const { tx } = await client.buildWithdrawal({
@@ -853,6 +853,7 @@ interface PendingProps extends FormProps {
 }
 
 function PendingWithdrawalCard({ client, address, pending, onDone }: PendingProps) {
+    const { walletId } = usePmxtWallet();
     const [stage, setStage] = useState<ActionStage>({ name: 'idle' });
     const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
 
@@ -872,7 +873,7 @@ function PendingWithdrawalCard({ client, address, pending, onDone }: PendingProp
 
     async function runAction(action: 'claim' | 'cancel') {
         try {
-            const provider = await getWalletProvider();
+            const provider = await getWalletProvider(walletId ?? undefined);
 
             setStage({ name: 'building', kind: action });
             const { tx } = await client.buildWithdrawal({

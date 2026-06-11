@@ -15,27 +15,78 @@ export const POLYGON_CHAIN_ID = 137;
 
 interface InjectedProvider extends Eip1193Provider {
     isMetaMask?: boolean;
+    isPhantom?: boolean;
     /** Multi-wallet pages expose every injected provider here. */
     providers?: InjectedProvider[];
 }
 
+/** Injected wallets the widgets can connect to, in priority order. */
+export type WalletId = 'metamask' | 'phantom';
+
+export const SUPPORTED_WALLETS: readonly WalletId[] = ['metamask', 'phantom'];
+
+export const WALLET_LABELS: Record<WalletId, string> = {
+    metamask: 'MetaMask',
+    phantom: 'Phantom',
+};
+
+function injectedCandidates(): InjectedProvider[] {
+    const g = globalThis as {
+        ethereum?: InjectedProvider;
+        phantom?: { ethereum?: InjectedProvider };
+    };
+    const eth = g.ethereum;
+    const candidates = eth?.providers?.length
+        ? [...eth.providers]
+        : eth
+          ? [eth]
+          : [];
+    // Phantom always exposes its EVM provider here, even when another wallet
+    // occupies window.ethereum.
+    const phantom = g.phantom?.ethereum;
+    if (phantom && !candidates.includes(phantom)) {
+        candidates.push(phantom);
+    }
+    return candidates;
+}
+
+function findWalletProvider(id: WalletId): InjectedProvider | undefined {
+    const candidates = injectedCandidates();
+    if (id === 'metamask') {
+        // Phantom spoofs `isMetaMask` for dapp compatibility — exclude it.
+        return candidates.find((p) => p.isMetaMask && !p.isPhantom);
+    }
+    return candidates.find((p) => p.isPhantom);
+}
+
+/** Wallets currently installed on the page, in connect-priority order. */
+export function detectWallets(): WalletId[] {
+    return SUPPORTED_WALLETS.filter((id) => findWalletProvider(id));
+}
+
 /**
- * The injected MetaMask provider; throws when MetaMask is not installed.
- * MetaMask is the only supported wallet — other injected wallets (Coinbase,
- * Rabby, Brave, …) are rejected even when they occupy `window.ethereum`.
- * When several wallets are installed, MetaMask is picked out of
- * `ethereum.providers`.
+ * The injected provider for `walletId`; throws when that wallet is not
+ * installed. Without an argument, returns the first installed supported
+ * wallet (MetaMask, then Phantom). Other injected wallets (Coinbase, Rabby,
+ * Brave, …) are rejected even when they occupy `window.ethereum`.
  */
-export function getInjectedProvider(): Eip1193Provider {
-    const eth = (globalThis as { ethereum?: InjectedProvider }).ethereum;
-    const candidates = eth?.providers?.length ? eth.providers : eth ? [eth] : [];
-    const metamask = candidates.find((p) => p.isMetaMask);
-    if (!metamask) {
+export function getInjectedProvider(walletId?: WalletId): Eip1193Provider {
+    if (walletId) {
+        const provider = findWalletProvider(walletId);
+        if (!provider) {
+            throw new Error(
+                `${WALLET_LABELS[walletId]} not found. Install ${WALLET_LABELS[walletId]} to connect.`,
+            );
+        }
+        return provider;
+    }
+    const provider = SUPPORTED_WALLETS.map(findWalletProvider).find(Boolean);
+    if (!provider) {
         throw new Error(
-            'MetaMask not found. Install MetaMask to connect — other wallets are not supported.',
+            'No supported wallet found. Install MetaMask or Phantom to connect — other wallets are not supported.',
         );
     }
-    return metamask;
+    return provider;
 }
 
 /** Prompts the wallet to connect and returns the authorized accounts. */
@@ -223,10 +274,13 @@ export interface PmxtSigner {
 }
 
 /** PmxtSigner backed by the injected wallet; switches chain before each signature. */
-export function createInjectedSigner(address: string): PmxtSigner {
+export function createInjectedSigner(
+    address: string,
+    walletId?: WalletId,
+): PmxtSigner {
     return {
         async signTypedData(typed: TypedData) {
-            const provider = getInjectedProvider();
+            const provider = getInjectedProvider(walletId);
             await switchChain(provider, Number(typed.domain.chainId));
             return signTypedData(provider, address, typed);
         },

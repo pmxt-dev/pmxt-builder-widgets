@@ -17,10 +17,12 @@ import {
 } from './lib/sandbox';
 import {
     createInjectedSigner,
+    detectWallets,
     getAuthorizedAccounts,
     getInjectedProvider,
     requestAccounts,
     type PmxtSigner,
+    type WalletId,
 } from './lib/wallet';
 
 /**
@@ -53,11 +55,16 @@ function wasDisconnected(): boolean {
 export interface PmxtWalletState {
     /** Connected account, or null when no wallet is connected. */
     address: `0x${string}` | null;
+    /** Which injected wallet is connected, or null. */
+    walletId: WalletId | null;
+    /** Installed supported wallets, in connect-priority order. */
+    availableWallets: WalletId[];
     /** True while a connect request is pending in the wallet. */
     connecting: boolean;
     /** Why the last connect attempt failed (e.g. user rejected), or null. */
     connectError: string | null;
-    connect: () => Promise<void>;
+    /** Connects `walletId`, or the first installed wallet when omitted. */
+    connect: (walletId?: WalletId) => Promise<void>;
     disconnect: () => void;
     /**
      * True when the provider manages the connection itself (injected wallet)
@@ -129,14 +136,54 @@ export function PmxtProvider({
     const [injectedAddress, setInjectedAddress] = useState<`0x${string}` | null>(
         null,
     );
+    const [connectedWallet, setConnectedWallet] = useState<WalletId | null>(
+        null,
+    );
+    const [availableWallets, setAvailableWallets] = useState<WalletId[]>([]);
     const [connecting, setConnecting] = useState(false);
     const [connectError, setConnectError] = useState<string | null>(null);
 
+    // Detection must run client-side (no window during SSR).
     useEffect(() => {
         if (wallet || sandbox) return;
+        setAvailableWallets(detectWallets());
+    }, [wallet, sandbox]);
+
+    // Silently restore an existing authorization (no wallet popup) so the
+    // connection survives navigation and reloads — unless the user
+    // explicitly disconnected. The first installed wallet with an authorized
+    // account wins.
+    useEffect(() => {
+        if (wallet || sandbox || wasDisconnected()) return;
+        let cancelled = false;
+        (async () => {
+            for (const id of detectWallets()) {
+                try {
+                    const accounts = await getAuthorizedAccounts(
+                        getInjectedProvider(id),
+                    );
+                    if (cancelled) return;
+                    if (accounts[0]) {
+                        setInjectedAddress(accounts[0]);
+                        setConnectedWallet(id);
+                        return;
+                    }
+                } catch {
+                    // Provider unavailable or rejected the call — try the next.
+                }
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [wallet, sandbox]);
+
+    // Follow account switches in the connected wallet's extension.
+    useEffect(() => {
+        if (wallet || sandbox || !connectedWallet) return;
         let eth;
         try {
-            eth = getInjectedProvider();
+            eth = getInjectedProvider(connectedWallet);
         } catch {
             return;
         }
@@ -145,34 +192,22 @@ export function PmxtProvider({
             setInjectedAddress((accounts[0] as `0x${string}`) ?? null);
         };
         eth.on?.('accountsChanged', onAccounts);
-
-        // Silently restore an existing authorization (no wallet popup) so the
-        // connection survives navigation and reloads — unless the user
-        // explicitly disconnected.
-        let cancelled = false;
-        if (!wasDisconnected()) {
-            getAuthorizedAccounts(eth)
-                .then((accounts) => {
-                    if (!cancelled && accounts[0]) {
-                        setInjectedAddress(accounts[0]);
-                    }
-                })
-                .catch(() => {});
-        }
-
         return () => {
-            cancelled = true;
             eth?.removeListener?.('accountsChanged', onAccounts);
         };
-    }, [wallet, sandbox]);
+    }, [wallet, sandbox, connectedWallet]);
 
-    const connect = useCallback(async () => {
+    const connect = useCallback(async (walletId?: WalletId) => {
         setConnecting(true);
         setConnectError(null);
         try {
-            const accounts = await requestAccounts(getInjectedProvider());
+            const id = walletId ?? detectWallets()[0];
+            const accounts = await requestAccounts(getInjectedProvider(id));
             setInjectedAddress(accounts[0] ?? null);
-            if (accounts[0]) rememberDisconnected(false);
+            if (accounts[0]) {
+                setConnectedWallet(id ?? null);
+                rememberDisconnected(false);
+            }
         } catch (err: unknown) {
             // A rejected prompt must not vanish silently — surface it so
             // connect buttons can tell the user what happened.
@@ -187,12 +222,15 @@ export function PmxtProvider({
     const disconnect = useCallback(() => {
         rememberDisconnected(true);
         setInjectedAddress(null);
+        setConnectedWallet(null);
     }, []);
 
     const walletState = useMemo<PmxtWalletState>(() => {
         if (sandbox) {
             return {
                 address: SANDBOX_ADDRESS,
+                walletId: null,
+                availableWallets: [],
                 connecting: false,
                 connectError: null,
                 connect: async () => {},
@@ -204,6 +242,8 @@ export function PmxtProvider({
         if (wallet) {
             return {
                 address: wallet.address,
+                walletId: null,
+                availableWallets: [],
                 connecting: false,
                 connectError: null,
                 connect: async () => {},
@@ -214,17 +254,23 @@ export function PmxtProvider({
         }
         return {
             address: injectedAddress,
+            walletId: connectedWallet,
+            availableWallets,
             connecting,
             connectError,
             connect,
             disconnect,
             canDisconnect: true,
-            signer: injectedAddress ? createInjectedSigner(injectedAddress) : null,
+            signer: injectedAddress
+                ? createInjectedSigner(injectedAddress, connectedWallet ?? undefined)
+                : null,
         };
     }, [
         sandbox,
         wallet,
         injectedAddress,
+        connectedWallet,
+        availableWallets,
         connecting,
         connectError,
         connect,
