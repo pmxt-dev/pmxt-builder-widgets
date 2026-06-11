@@ -103,6 +103,12 @@ export function MarketCard({
 
     const bodyInteractive = !!onClick || (canTrade && !!yes);
 
+    // Bare outcome titles ("Anthropic") are meaningless without their event
+    // ("Best AI model end of June?") — show the event as a context line.
+    const question = marketQuestion(market.title, eventTitle);
+    const context =
+        eventTitle && eventTitle.trim() !== question ? eventTitle.trim() : null;
+
     return (
         <article
             className={`overflow-hidden rounded-xl border border-zinc-200/80 bg-[var(--pmxt-surface,#ffffff)] shadow-sm transition-all hover:shadow-md dark:border-zinc-800 dark:bg-[var(--pmxt-surface-dark,#18181b)] ${className}`}
@@ -118,8 +124,13 @@ export function MarketCard({
                 }`}
             >
                 <div className="min-w-0">
+                    {context && (
+                        <div className="truncate text-[11px] text-zinc-500 dark:text-zinc-400">
+                            {context}
+                        </div>
+                    )}
                     <h3 className="truncate text-sm font-semibold text-zinc-950 dark:text-zinc-50">
-                        {marketQuestion(market.title, eventTitle)}
+                        {question}
                     </h3>
                     <div className="mt-1 flex items-center gap-2 text-[11px] text-zinc-500 dark:text-zinc-400">
                         <VenueBadge venue={resolvedVenue} />

@@ -101,14 +101,18 @@ export function OrderTicket({
     const shares = Number.parseFloat(sharesStr) || 0;
     const limitPrice = Number.parseFloat(limitPriceStr) || 0;
 
-    const positions = usePositions(!isBuy && address ? address : null);
+    const positions = usePositions(
+        !isBuy && market.heldShares == null && address ? address : null,
+    );
     const heldShares =
+        market.heldShares ??
         positions.data?.find(
             (p) =>
                 (market.outcomeUuid != null &&
                     p.outcome_id === market.outcomeUuid) ||
                 p.raw?.token_id === market.tokenId,
-        )?.shares ?? 0;
+        )?.shares ??
+        0;
 
     // `tokenId` may be '' for UUID-only picks — the hook skips fetching then
     // and we fall back to the catalog price carried on the pick.
@@ -572,7 +576,7 @@ export function OrderTicket({
                                         >
                                             {wallet.connecting
                                                 ? 'Connecting…'
-                                                : 'Connect wallet'}
+                                                : 'Connect MetaMask'}
                                         </button>
                                         {wallet.connectError && (
                                             <div className="text-center text-xs text-red-600 dark:text-red-400">

@@ -17,10 +17,38 @@ import {
 } from './lib/sandbox';
 import {
     createInjectedSigner,
+    getAuthorizedAccounts,
     getInjectedProvider,
     requestAccounts,
     type PmxtSigner,
 } from './lib/wallet';
+
+/**
+ * Set after an explicit disconnect so the silent `eth_accounts` restore on
+ * mount doesn't immediately re-connect — the wallet itself stays authorized
+ * until the user revokes the site in the extension.
+ */
+const DISCONNECTED_KEY = 'pmxt-widgets:disconnected';
+
+function rememberDisconnected(disconnected: boolean): void {
+    try {
+        if (disconnected) {
+            window.localStorage.setItem(DISCONNECTED_KEY, '1');
+        } else {
+            window.localStorage.removeItem(DISCONNECTED_KEY);
+        }
+    } catch {
+        // Storage unavailable (SSR, privacy mode) — restore just won't persist.
+    }
+}
+
+function wasDisconnected(): boolean {
+    try {
+        return window.localStorage.getItem(DISCONNECTED_KEY) === '1';
+    } catch {
+        return false;
+    }
+}
 
 export interface PmxtWalletState {
     /** Connected account, or null when no wallet is connected. */
@@ -31,6 +59,12 @@ export interface PmxtWalletState {
     connectError: string | null;
     connect: () => Promise<void>;
     disconnect: () => void;
+    /**
+     * True when the provider manages the connection itself (injected wallet)
+     * and `disconnect` actually does something. False in sandbox and
+     * bring-your-own-wallet modes, where the host owns the connection.
+     */
+    canDisconnect: boolean;
     /** EIP-712 signer for the connected account, or null. */
     signer: PmxtSigner | null;
 }
@@ -111,7 +145,25 @@ export function PmxtProvider({
             setInjectedAddress((accounts[0] as `0x${string}`) ?? null);
         };
         eth.on?.('accountsChanged', onAccounts);
-        return () => eth?.removeListener?.('accountsChanged', onAccounts);
+
+        // Silently restore an existing authorization (no wallet popup) so the
+        // connection survives navigation and reloads — unless the user
+        // explicitly disconnected.
+        let cancelled = false;
+        if (!wasDisconnected()) {
+            getAuthorizedAccounts(eth)
+                .then((accounts) => {
+                    if (!cancelled && accounts[0]) {
+                        setInjectedAddress(accounts[0]);
+                    }
+                })
+                .catch(() => {});
+        }
+
+        return () => {
+            cancelled = true;
+            eth?.removeListener?.('accountsChanged', onAccounts);
+        };
     }, [wallet, sandbox]);
 
     const connect = useCallback(async () => {
@@ -120,6 +172,7 @@ export function PmxtProvider({
         try {
             const accounts = await requestAccounts(getInjectedProvider());
             setInjectedAddress(accounts[0] ?? null);
+            if (accounts[0]) rememberDisconnected(false);
         } catch (err: unknown) {
             // A rejected prompt must not vanish silently — surface it so
             // connect buttons can tell the user what happened.
@@ -131,7 +184,10 @@ export function PmxtProvider({
         }
     }, []);
 
-    const disconnect = useCallback(() => setInjectedAddress(null), []);
+    const disconnect = useCallback(() => {
+        rememberDisconnected(true);
+        setInjectedAddress(null);
+    }, []);
 
     const walletState = useMemo<PmxtWalletState>(() => {
         if (sandbox) {
@@ -141,6 +197,7 @@ export function PmxtProvider({
                 connectError: null,
                 connect: async () => {},
                 disconnect: () => {},
+                canDisconnect: false,
                 signer: sandboxSigner,
             };
         }
@@ -151,6 +208,7 @@ export function PmxtProvider({
                 connectError: null,
                 connect: async () => {},
                 disconnect: () => {},
+                canDisconnect: false,
                 signer: wallet.signer,
             };
         }
@@ -160,6 +218,7 @@ export function PmxtProvider({
             connectError,
             connect,
             disconnect,
+            canDisconnect: true,
             signer: injectedAddress ? createInjectedSigner(injectedAddress) : null,
         };
     }, [

@@ -56,10 +56,15 @@ export function EventCard({
 }: EventCardProps) {
     const resolvedVenue = venue ?? event.sourceExchange ?? 'polymarket';
     const [showAll, setShowAll] = useState(false);
-    const markets = showAll
-        ? event.markets
-        : event.markets.slice(0, maxMarkets);
-    const overflow = event.markets.length - markets.length;
+    // Busiest markets first — API order buries the liquid ones (e.g. 60
+    // World Cup outcomes listed alphabetically).
+    const ranked = [...event.markets].sort(
+        (a, b) =>
+            (b.volume24h ?? 0) - (a.volume24h ?? 0) ||
+            (b.volume ?? 0) - (a.volume ?? 0),
+    );
+    const markets = showAll ? ranked : ranked.slice(0, maxMarkets);
+    const overflow = ranked.length - markets.length;
 
     const ctx = usePmxtOptional();
     const canTrade =

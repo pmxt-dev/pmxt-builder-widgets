@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import {
     marketNo,
     marketYes,
@@ -14,6 +15,7 @@ import type {
     PmxtOutcome,
     TradingVenue,
 } from '../lib/types';
+import { OrderBookWidget } from './order-book';
 import { OrderTicket } from './order-ticket';
 
 export interface InlineTradePanelProps {
@@ -50,6 +52,7 @@ export function InlineTradePanel({
     const outcomes = orderedOutcomes(market);
     const selected =
         outcomes.find((o) => o.outcomeId === outcomeId) ?? outcomes[0];
+    const [showBook, setShowBook] = useState(false);
     if (!selected) return null;
 
     return (
@@ -103,6 +106,22 @@ export function InlineTradePanel({
                 onDone={onDone}
                 compact
             />
+
+            <button
+                type="button"
+                onClick={() => setShowBook(!showBook)}
+                aria-expanded={showBook}
+                className="mt-3 text-[11px] font-medium text-zinc-500 underline decoration-zinc-300 underline-offset-2 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:decoration-zinc-600 dark:hover:text-zinc-100"
+            >
+                {showBook ? 'Hide order book' : 'View order book'}
+            </button>
+            {showBook && (
+                <OrderBookWidget
+                    venue={venue}
+                    outcomeId={selected.outcomeId}
+                    className="mt-2"
+                />
+            )}
         </div>
     );
 }

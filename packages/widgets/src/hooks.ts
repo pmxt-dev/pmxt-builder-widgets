@@ -129,16 +129,17 @@ export function useEvents(
  */
 export function useUnifiedEvents(
     venues: CatalogVenue[],
-    opts: { limit?: number; enabled?: boolean } = {},
+    opts: { limit?: number; query?: string; enabled?: boolean } = {},
 ): QueryState<VenueEvent[]> {
     const { client } = usePmxt();
     return usePmxtQuery(
-        ['unified-events', venues.join(','), opts.limit],
+        ['unified-events', venues.join(','), opts.limit, opts.query],
         async () => {
             const settled = await Promise.allSettled(
                 venues.map(async (venue) => {
                     const events = await client.fetchEvents(venue, {
                         limit: opts.limit ?? 10,
+                        query: opts.query,
                     });
                     return events.map((event) => ({ venue, event }));
                 }),
@@ -430,14 +431,14 @@ export function useEventClusters(
  */
 export function useBalances(
     address: string | null,
-    opts: { refetchInterval?: number } = {},
+    opts: { refetchInterval?: number; enabled?: boolean } = {},
 ): QueryState<PmxtBalance[]> {
     const { client } = usePmxt();
     return usePmxtQuery(
         ['balances', address],
         () => client.fetchBalances(address as string),
         {
-            enabled: !!address,
+            enabled: !!address && (opts.enabled ?? true),
             refetchInterval: opts.refetchInterval ?? 15_000,
         },
     );
@@ -449,14 +450,14 @@ export function useBalances(
  */
 export function useEscrowBalances(
     address: string | null,
-    opts: { refetchInterval?: number } = {},
+    opts: { refetchInterval?: number; enabled?: boolean } = {},
 ): QueryState<EscrowBalancesResponse> {
     const { client } = usePmxt();
     return usePmxtQuery(
         ['escrow-balances', address],
         () => client.fetchEscrowBalances(address as string),
         {
-            enabled: !!address,
+            enabled: !!address && (opts.enabled ?? true),
             refetchInterval: opts.refetchInterval ?? 15_000,
         },
     );
@@ -487,16 +488,95 @@ export function useWithdrawals(
  * Open positions for an address from the /v0 trading API. Skips fetching
  * while `address` is null; polls every 15s by default.
  */
+/** A held escrow position, marked to market at the current best bid. */
+export interface PortfolioPosition {
+    venue: CatalogVenue;
+    tokenId: string;
+    title: string | null;
+    outcome: string | null;
+    shares: number;
+    /** Best bid — what selling now would actually fetch. 0 when no book. */
+    bid: number;
+    value: number;
+}
+
+/** Escrow cash + best-bid-valued positions = total portfolio. */
+export interface Portfolio {
+    cash: number;
+    positionsValue: number;
+    total: number;
+    positions: PortfolioPosition[];
+}
+
+/**
+ * Escrow portfolio for an address: USDC cash plus every held outcome token
+ * valued at its current best bid (what a sell would actually receive —
+ * mid-price is smoother but lies on thin books). Polls every 30s.
+ */
+export function usePortfolio(
+    address: string | null,
+    opts: { refetchInterval?: number; enabled?: boolean } = {},
+): QueryState<Portfolio> {
+    const { client } = usePmxt();
+    return usePmxtQuery(
+        ['portfolio', address],
+        async () => {
+            const res = await client.fetchEscrowBalances(address as string);
+            const held = res.tokens.filter(
+                (t) => t.token_id != null && t.venue != null &&
+                    t.escrow_balance_tokens > 0,
+            );
+            const books = await Promise.allSettled(
+                held.map((t) =>
+                    client.fetchOrderBook(
+                        t.venue as CatalogVenue,
+                        t.token_id as string,
+                        1,
+                    ),
+                ),
+            );
+            const positions: PortfolioPosition[] = held.map((t, i) => {
+                const book = books[i];
+                const bid =
+                    book?.status === 'fulfilled'
+                        ? (book.value.bids[0]?.price ?? 0)
+                        : 0;
+                return {
+                    venue: t.venue as CatalogVenue,
+                    tokenId: t.token_id as string,
+                    title: t.market_title,
+                    outcome: t.outcome_name,
+                    shares: t.escrow_balance_tokens,
+                    bid,
+                    value: t.escrow_balance_tokens * bid,
+                };
+            });
+            const cash = res.usdc.escrow_balance_tokens;
+            const positionsValue = positions.reduce((s, p) => s + p.value, 0);
+            return {
+                cash,
+                positionsValue,
+                total: cash + positionsValue,
+                positions,
+            };
+        },
+        {
+            enabled: !!address && (opts.enabled ?? true),
+            refetchInterval: opts.refetchInterval ?? 30_000,
+        },
+    );
+}
+
 export function usePositions(
     address: string | null,
-    opts: { refetchInterval?: number } = {},
+    opts: { refetchInterval?: number; enabled?: boolean } = {},
 ): QueryState<PmxtPosition[]> {
     const { client } = usePmxt();
     return usePmxtQuery(
         ['positions', address],
         () => client.fetchPositions(address as string),
         {
-            enabled: !!address,
+            enabled: !!address && (opts.enabled ?? true),
             refetchInterval: opts.refetchInterval ?? 15_000,
         },
     );

@@ -13,15 +13,29 @@ export interface Eip1193Provider {
 /** Polygon mainnet chain id. */
 export const POLYGON_CHAIN_ID = 137;
 
-/** The injected `window.ethereum` provider; throws when no wallet is installed. */
+interface InjectedProvider extends Eip1193Provider {
+    isMetaMask?: boolean;
+    /** Multi-wallet pages expose every injected provider here. */
+    providers?: InjectedProvider[];
+}
+
+/**
+ * The injected MetaMask provider; throws when MetaMask is not installed.
+ * MetaMask is the only supported wallet — other injected wallets (Coinbase,
+ * Rabby, Brave, …) are rejected even when they occupy `window.ethereum`.
+ * When several wallets are installed, MetaMask is picked out of
+ * `ethereum.providers`.
+ */
 export function getInjectedProvider(): Eip1193Provider {
-    const eth = (globalThis as { ethereum?: Eip1193Provider }).ethereum;
-    if (!eth) {
+    const eth = (globalThis as { ethereum?: InjectedProvider }).ethereum;
+    const candidates = eth?.providers?.length ? eth.providers : eth ? [eth] : [];
+    const metamask = candidates.find((p) => p.isMetaMask);
+    if (!metamask) {
         throw new Error(
-            'No injected wallet found. Install MetaMask or another EIP-1193 wallet.',
+            'MetaMask not found. Install MetaMask to connect — other wallets are not supported.',
         );
     }
-    return eth;
+    return metamask;
 }
 
 /** Prompts the wallet to connect and returns the authorized accounts. */
@@ -30,6 +44,19 @@ export async function requestAccounts(
 ): Promise<`0x${string}`[]> {
     const accounts = (await provider.request({
         method: 'eth_requestAccounts',
+    })) as string[];
+    return accounts as `0x${string}`[];
+}
+
+/**
+ * Returns already-authorized accounts without prompting (`eth_accounts`).
+ * Empty when the site has no active wallet authorization.
+ */
+export async function getAuthorizedAccounts(
+    provider: Eip1193Provider,
+): Promise<`0x${string}`[]> {
+    const accounts = (await provider.request({
+        method: 'eth_accounts',
     })) as string[];
     return accounts as `0x${string}`[];
 }
@@ -142,6 +169,43 @@ export async function readErc20Allowance(
         params: [{ to: token, data }, 'latest'],
     })) as string;
     return result && result !== '0x' ? BigInt(result) : BigInt(0);
+}
+
+/** Reads `balanceOf(account)` on an ERC-20 via `eth_call`. */
+export async function readErc20Balance(
+    provider: Eip1193Provider,
+    token: `0x${string}`,
+    account: `0x${string}`,
+): Promise<bigint> {
+    // balanceOf(address) selector + left-padded address arg.
+    const data = `0x70a08231${pad32(account)}`;
+    const result = (await provider.request({
+        method: 'eth_call',
+        params: [{ to: token, data }, 'latest'],
+    })) as string;
+    return result && result !== '0x' ? BigInt(result) : BigInt(0);
+}
+
+/** Reads the native (POL) balance of an account. */
+export async function readNativeBalance(
+    provider: Eip1193Provider,
+    account: `0x${string}`,
+): Promise<bigint> {
+    const result = (await provider.request({
+        method: 'eth_getBalance',
+        params: [account, 'latest'],
+    })) as string;
+    return result && result !== '0x' ? BigInt(result) : BigInt(0);
+}
+
+/** Calldata for `approve(spender, amount)` on an ERC-20. */
+export function encodeErc20Approve(
+    spender: `0x${string}`,
+    amount: bigint,
+): `0x${string}` {
+    return `0x095ea7b3${pad32(spender)}${amount
+        .toString(16)
+        .padStart(64, '0')}` as `0x${string}`;
 }
 
 function pad32(address: string): string {

@@ -429,6 +429,12 @@ export interface PickedMarket {
     venue: TradingVenue;
     /** Opinion's numeric market id (opinion venue only). */
     opinionMarketId?: number;
+    /**
+     * Shares already held, when the pick comes from a position row. Trumps
+     * OrderTicket's own /v0 lookup — escrow-sourced positions don't appear
+     * there.
+     */
+    heldShares?: number;
     /** Catalog market UUID, when known. */
     marketUuid?: string;
     /** Catalog outcome UUID, when known. */

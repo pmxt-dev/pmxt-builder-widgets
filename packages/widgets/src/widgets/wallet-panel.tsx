@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useEscrowBalances, useWithdrawals } from '../hooks';
+import { useEffect, useRef, useState } from 'react';
+import { useDebounced, useEscrowBalances, useWithdrawals } from '../hooks';
 import { usePmxt, usePmxtWallet } from '../provider';
 import type { PmxtClient } from '../lib/client';
 import type { UnsignedTx, WithdrawalEvent } from '../lib/types';
@@ -9,14 +9,26 @@ import {
     MICRO_USDC,
     POLYGON_CHAIN_ID,
     USDC_E_ADDRESS,
+    encodeErc20Approve,
     getInjectedProvider,
     readErc20Allowance,
+    readErc20Balance,
+    readNativeBalance,
     sendTransaction,
     switchChain,
     waitForTransactionReceipt,
     type Eip1193Provider,
 } from '../lib/wallet';
-import { SpinnerIcon } from '../lib/icons';
+import {
+    PAY_TOKENS,
+    USDCE_PAY_TOKEN,
+    buildSwapTx,
+    formatTokenAmount,
+    getSwapQuote,
+    type PayToken,
+} from '../lib/swap';
+import { shortAddress } from '../lib/format';
+import { ChevronDownIcon, SpinnerIcon } from '../lib/icons';
 
 /** Props for {@link WalletPanel}. */
 export interface WalletPanelProps {
@@ -83,7 +95,7 @@ export function WalletPanel({ showHistory = true, className = '' }: WalletPanelP
                     disabled={wallet.connecting}
                     className={primaryBtn}
                 >
-                    {wallet.connecting ? 'Connecting…' : 'Connect wallet'}
+                    {wallet.connecting ? 'Connecting…' : 'Connect MetaMask'}
                 </button>
                 {wallet.connectError && (
                     <div className="mt-2 text-xs text-red-600 dark:text-red-400">
@@ -102,7 +114,23 @@ export function WalletPanel({ showHistory = true, className = '' }: WalletPanelP
     return (
         <section className={`${surface} ${className}`}>
             <div className="flex items-start justify-between gap-4">
-                <Header />
+                <div>
+                    <Header />
+                    <div className="mt-1 flex items-center gap-2">
+                        <span className="font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                            {shortAddress(address)}
+                        </span>
+                        {wallet.canDisconnect && (
+                            <button
+                                type="button"
+                                onClick={wallet.disconnect}
+                                className="text-xs text-zinc-400 underline decoration-zinc-300 underline-offset-2 transition-colors hover:text-zinc-900 dark:text-zinc-500 dark:decoration-zinc-600 dark:hover:text-zinc-100"
+                            >
+                                Disconnect
+                            </button>
+                        )}
+                    </div>
+                </div>
                 <div className="text-right">
                     <div className="text-[11px] font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
                         Escrow balance
@@ -152,6 +180,13 @@ export function WalletPanel({ showHistory = true, className = '' }: WalletPanelP
                 )}
             </div>
 
+            <p className="mt-3 text-[11px] leading-relaxed text-zinc-400 dark:text-zinc-500">
+                Funds are held by the PMXT escrow smart contract on Polygon —
+                never a private wallet. Every trade requires your wallet&apos;s
+                signature, and withdrawals can only be sent back to your own
+                address.
+            </p>
+
             <PendingWithdrawalCard
                 client={client}
                 address={address}
@@ -197,6 +232,9 @@ function errorMessage(err: unknown, fallback: string): string {
 // ---- Deposit ---------------------------------------------------------------
 
 type DepositStep =
+    | 'quoting'
+    | 'approving-swap'
+    | 'swapping'
     | 'building-deposit'
     | 'reading-allowance'
     | 'resetting-approval'
@@ -219,9 +257,13 @@ interface FormProps {
 function DepositForm({ client, address, onDone }: FormProps) {
     const [amount, setAmount] = useState('');
     const [stage, setStage] = useState<DepositStage>({ name: 'idle' });
+    const [paySymbol, setPaySymbol] = useState('USDC.e');
+
+    const payToken =
+        PAY_TOKENS.find((t) => t.symbol === paySymbol) ?? USDCE_PAY_TOKEN;
+    const isDirect = payToken.address === USDC_E_ADDRESS;
 
     const amountNum = Number.parseFloat(amount) || 0;
-    const amountWei = BigInt(Math.floor(amountNum * Number(MICRO_USDC)));
     const isBusy = stage.name === 'busy';
     const canSubmit = amountNum > 0 && !isBusy;
 
@@ -252,11 +294,84 @@ function DepositForm({ client, address, onDone }: FormProps) {
         try {
             const provider = await getWalletProvider();
 
+            // 0. Pay-with-any-token: swap the selected token to USDC.e via
+            // the KyberSwap aggregator first, then deposit the proceeds.
+            let usdcAmount = amountNum;
+            if (!isDirect) {
+                const amountIn = BigInt(
+                    Math.floor(amountNum * 10 ** payToken.decimals),
+                );
+
+                setStage({ name: 'busy', step: 'quoting' });
+                const quote = await getSwapQuote(payToken, amountIn);
+
+                // Approve the aggregator router (ERC-20 inputs only; reset a
+                // stale non-zero allowance first — USDT-style tokens revert
+                // on non-zero → non-zero approvals).
+                if (!payToken.native) {
+                    const routerAllowance = await readErc20Allowance(
+                        provider,
+                        payToken.address as `0x${string}`,
+                        address,
+                        quote.routerAddress,
+                    );
+                    if (routerAllowance < amountIn) {
+                        if (routerAllowance > BigInt(0)) {
+                            await sendTx(
+                                provider,
+                                {
+                                    to: payToken.address as `0x${string}`,
+                                    data: encodeErc20Approve(
+                                        quote.routerAddress,
+                                        BigInt(0),
+                                    ),
+                                    value: '0',
+                                    chainId: POLYGON_CHAIN_ID,
+                                },
+                                'approving-swap',
+                            );
+                        }
+                        await sendTx(
+                            provider,
+                            {
+                                to: payToken.address as `0x${string}`,
+                                data: encodeErc20Approve(
+                                    quote.routerAddress,
+                                    amountIn,
+                                ),
+                                value: '0',
+                                chainId: POLYGON_CHAIN_ID,
+                            },
+                            'approving-swap',
+                        );
+                    }
+                }
+
+                setStage({ name: 'busy', step: 'quoting' });
+                const swap = await buildSwapTx(quote, address);
+                await sendTx(
+                    provider,
+                    {
+                        to: swap.to,
+                        data: swap.data,
+                        value: swap.value.toString(),
+                        chainId: POLYGON_CHAIN_ID,
+                    },
+                    'swapping',
+                );
+                // Deposit the slippage-safe minimum out; any extra USDC.e
+                // received stays in the wallet.
+                usdcAmount = Number(swap.amountOut) / Number(MICRO_USDC);
+            }
+            const usdcAmountWei = BigInt(
+                Math.floor(usdcAmount * Number(MICRO_USDC)),
+            );
+
             // 1. Build deposit first so we learn the escrow address from `tx.to`.
             setStage({ name: 'busy', step: 'building-deposit' });
             let deposit = await client.buildDeposit({
                 token: 'usdc',
-                amount: amountNum,
+                amount: usdcAmount,
                 user_address: address,
             });
             const escrowAddress = deposit.tx.to;
@@ -272,7 +387,7 @@ function DepositForm({ client, address, onDone }: FormProps) {
 
             // 3. Smart approve: skip if enough; reset-to-zero if stale non-zero.
             let approvalSubmitted = false;
-            if (allowance < amountWei) {
+            if (allowance < usdcAmountWei) {
                 if (allowance > BigInt(0)) {
                     const resetTx = (
                         await client.buildApprove({
@@ -295,7 +410,7 @@ function DepositForm({ client, address, onDone }: FormProps) {
                 setStage({ name: 'busy', step: 'building-deposit' });
                 deposit = await client.buildDeposit({
                     token: 'usdc',
-                    amount: amountNum,
+                    amount: usdcAmount,
                     user_address: address,
                 });
             }
@@ -308,7 +423,7 @@ function DepositForm({ client, address, onDone }: FormProps) {
 
             // 6. Poll escrow balance until the deposit reflects.
             setStage({ name: 'busy', step: 'confirming-balance', hash: depositHash });
-            await waitForEscrowBalance(client, address, amountNum);
+            await waitForEscrowBalance(client, address, usdcAmount);
 
             setStage({ name: 'done', hash: depositHash });
             setAmount('');
@@ -318,14 +433,73 @@ function DepositForm({ client, address, onDone }: FormProps) {
         }
     }
 
+    const balances = usePayTokenBalances(address, stage.name === 'done');
+    const balance = balances.get(payToken.symbol);
+    const estimate = useSwapEstimate(payToken, amountNum, isDirect);
+
+    function setMax() {
+        if (balance == null) return;
+        // Keep a gas cushion when spending the native token.
+        const cushion = payToken.native ? BigInt(2) * BigInt(10) ** BigInt(16) : BigInt(0);
+        const spendable = balance > cushion ? balance - cushion : BigInt(0);
+        setAmount(
+            (Number(spendable) / 10 ** payToken.decimals).toString(),
+        );
+    }
+
     return (
         <div>
             <form onSubmit={handleSubmit} className="space-y-3">
-                <AmountInput value={amount} onChange={setAmount} disabled={isBusy} />
+                <TokenAmountField
+                    amount={amount}
+                    onAmountChange={setAmount}
+                    token={payToken}
+                    onTokenChange={(t) => setPaySymbol(t.symbol)}
+                    balances={balances}
+                    disabled={isBusy}
+                />
+                <div className="flex items-center justify-between text-[11px] text-zinc-500 dark:text-zinc-400">
+                    <span>
+                        Balance:{' '}
+                        <span className="font-mono text-zinc-700 dark:text-zinc-300">
+                            {balance != null
+                                ? formatTokenAmount(balance, payToken.decimals)
+                                : '—'}
+                        </span>{' '}
+                        {payToken.symbol}
+                        {balance != null && balance > BigInt(0) && (
+                            <button
+                                type="button"
+                                onClick={setMax}
+                                disabled={isBusy}
+                                className="ml-1.5 font-medium text-zinc-600 underline decoration-zinc-300 underline-offset-2 hover:text-zinc-950 dark:text-zinc-300 dark:decoration-zinc-600 dark:hover:text-zinc-50"
+                            >
+                                Max
+                            </button>
+                        )}
+                    </span>
+                    {!isDirect && amountNum > 0 && (
+                        <span className="font-mono">
+                            {estimate != null
+                                ? `≈ $${estimate.toFixed(2)} USDC.e`
+                                : '…'}
+                        </span>
+                    )}
+                </div>
                 <button type="submit" disabled={!canSubmit} className={primaryBtn}>
-                    {depositButtonLabel(stage)}
+                    {stage.name === 'idle' || stage.name === 'done'
+                        ? isDirect
+                            ? 'Deposit USDC'
+                            : `Swap ${payToken.symbol} & deposit`
+                        : depositButtonLabel(stage)}
                 </button>
             </form>
+            {!isDirect && (
+                <p className="mt-2 text-[11px] leading-relaxed text-zinc-400 dark:text-zinc-500">
+                    Swapped to USDC.e at the best route (KyberSwap, max 1%
+                    slippage), then deposited. You sign every transaction.
+                </p>
+            )}
             <StageNotice
                 stage={stage}
                 doneText="Deposit confirmed."
@@ -335,10 +509,211 @@ function DepositForm({ client, address, onDone }: FormProps) {
     );
 }
 
+/** Wallet balances for every pay token, refreshed on address/deposit. */
+function usePayTokenBalances(
+    address: `0x${string}`,
+    refreshSignal: boolean,
+): Map<string, bigint> {
+    const [balances, setBalances] = useState<Map<string, bigint>>(new Map());
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            let provider: Eip1193Provider;
+            try {
+                provider = getInjectedProvider();
+            } catch {
+                return;
+            }
+            const entries = await Promise.all(
+                PAY_TOKENS.map(async (t) => {
+                    try {
+                        const raw = t.native
+                            ? await readNativeBalance(provider, address)
+                            : await readErc20Balance(
+                                  provider,
+                                  t.address as `0x${string}`,
+                                  address,
+                              );
+                        return [t.symbol, raw] as const;
+                    } catch {
+                        return [t.symbol, BigInt(0)] as const;
+                    }
+                }),
+            );
+            if (!cancelled) setBalances(new Map(entries));
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [address, refreshSignal]);
+
+    return balances;
+}
+
+/** Debounced USDC.e estimate for the current (token, amount) pair. */
+function useSwapEstimate(
+    token: PayToken,
+    amountNum: number,
+    isDirect: boolean,
+): number | null {
+    const [estimate, setEstimate] = useState<number | null>(null);
+    const debouncedAmount = useDebounced(amountNum, 400);
+    const seq = useRef(0);
+
+    useEffect(() => {
+        setEstimate(null);
+        if (isDirect || debouncedAmount <= 0) return;
+        const mySeq = ++seq.current;
+        const amountIn = BigInt(
+            Math.floor(debouncedAmount * 10 ** token.decimals),
+        );
+        getSwapQuote(token, amountIn)
+            .then((quote) => {
+                if (seq.current === mySeq) {
+                    setEstimate(Number(quote.amountOut) / Number(MICRO_USDC));
+                }
+            })
+            .catch(() => {});
+    }, [token, debouncedAmount, isDirect]);
+
+    return estimate;
+}
+
+function TokenAmountField({
+    amount,
+    onAmountChange,
+    token,
+    onTokenChange,
+    balances,
+    disabled,
+}: {
+    amount: string;
+    onAmountChange: (v: string) => void;
+    token: PayToken;
+    onTokenChange: (t: PayToken) => void;
+    balances: Map<string, bigint>;
+    disabled: boolean;
+}) {
+    const [open, setOpen] = useState(false);
+
+    return (
+        <div>
+            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                Deposit
+            </label>
+            <div className="relative mt-1">
+                <div className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2.5 focus-within:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900">
+                    <input
+                        type="number"
+                        inputMode="decimal"
+                        step="any"
+                        min="0"
+                        value={amount}
+                        onChange={(e) => onAmountChange(e.target.value)}
+                        disabled={disabled}
+                        placeholder="0.00"
+                        className="min-w-0 flex-1 bg-transparent font-mono text-xl font-semibold text-zinc-950 placeholder-zinc-300 focus:outline-none disabled:text-zinc-400 dark:text-zinc-50 dark:placeholder-zinc-600"
+                    />
+                    <button
+                        type="button"
+                        onClick={() => setOpen(!open)}
+                        disabled={disabled}
+                        aria-expanded={open}
+                        className="flex shrink-0 items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 py-1 pl-1 pr-2.5 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+                    >
+                        <TokenIcon token={token} className="size-6" />
+                        <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                            {token.symbol}
+                        </span>
+                        <ChevronDownIcon
+                            className={`size-3 text-zinc-400 transition-transform ${open ? 'rotate-180' : ''}`}
+                        />
+                    </button>
+                </div>
+
+                {open && (
+                    <div className="absolute right-0 z-10 mt-1.5 w-72 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+                        <div className="border-b border-zinc-100 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-zinc-400 dark:border-zinc-800 dark:text-zinc-500">
+                            Deposit token — Polygon
+                        </div>
+                        <ul>
+                            {PAY_TOKENS.map((t) => {
+                                const bal = balances.get(t.symbol);
+                                const active = t.symbol === token.symbol;
+                                return (
+                                    <li key={t.symbol}>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                onTokenChange(t);
+                                                setOpen(false);
+                                            }}
+                                            className={`flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800 ${
+                                                active
+                                                    ? 'bg-zinc-50 dark:bg-zinc-800'
+                                                    : ''
+                                            }`}
+                                        >
+                                            <TokenIcon token={t} className="size-7" />
+                                            <span className="min-w-0 flex-1">
+                                                <span className="block text-sm font-semibold text-zinc-950 dark:text-zinc-50">
+                                                    {t.symbol}
+                                                </span>
+                                                <span className="block truncate text-[11px] text-zinc-500 dark:text-zinc-400">
+                                                    {t.name}
+                                                </span>
+                                            </span>
+                                            <span className="shrink-0 font-mono text-xs text-zinc-600 dark:text-zinc-300">
+                                                {bal != null
+                                                    ? formatTokenAmount(bal, t.decimals)
+                                                    : ''}
+                                            </span>
+                                        </button>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+/** Token logo with a monogram fallback when the CDN image fails. */
+function TokenIcon({ token, className = '' }: { token: PayToken; className?: string }) {
+    const [failed, setFailed] = useState(false);
+    if (!token.logo || failed) {
+        return (
+            <span
+                className={`flex items-center justify-center rounded-full bg-zinc-200 text-[9px] font-bold text-zinc-600 dark:bg-zinc-700 dark:text-zinc-200 ${className}`}
+            >
+                {token.symbol.slice(0, 3)}
+            </span>
+        );
+    }
+    return (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+            src={token.logo}
+            alt=""
+            onError={() => setFailed(true)}
+            className={`rounded-full ${className}`}
+        />
+    );
+}
+
 function depositButtonLabel(stage: DepositStage): string {
     if (stage.name === 'idle' || stage.name === 'done') return 'Deposit USDC';
     if (stage.name === 'error') return 'Try again';
     switch (stage.step) {
+        case 'quoting':
+            return 'Quoting swap…';
+        case 'approving-swap':
+            return 'Approving for swap…';
+        case 'swapping':
+            return 'Swapping to USDC.e…';
         case 'building-deposit':
             return 'Building deposit…';
         case 'reading-allowance':
@@ -658,15 +1033,17 @@ function AmountInput({
     value,
     onChange,
     disabled,
+    label = 'Amount (USDC)',
 }: {
     value: string;
     onChange: (v: string) => void;
     disabled: boolean;
+    label?: string;
 }) {
     return (
         <div>
             <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                Amount (USDC)
+                {label}
             </label>
             <input
                 type="number"

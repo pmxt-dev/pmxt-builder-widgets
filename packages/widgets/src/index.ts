@@ -57,6 +57,7 @@ export {
     useBalances,
     useEscrowBalances,
     useWithdrawals,
+    usePortfolio,
     usePositions,
     useOpenOrders,
     useUserTrades,
@@ -66,6 +67,8 @@ export type {
     QueryOptions,
     VenueMarket,
     VenueEvent,
+    Portfolio,
+    PortfolioPosition,
 } from './hooks';
 
 // Display widgets

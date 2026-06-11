@@ -39,7 +39,7 @@ export function OpenOrdersTable({ address, className = '' }: OpenOrdersTableProp
                         disabled={wallet.connecting}
                         className="w-full rounded-lg bg-zinc-900 px-3 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
                     >
-                        {wallet.connecting ? 'Connecting…' : 'Connect wallet'}
+                        {wallet.connecting ? 'Connecting…' : 'Connect MetaMask'}
                     </button>
                 </div>
             ) : loading && !data ? (
