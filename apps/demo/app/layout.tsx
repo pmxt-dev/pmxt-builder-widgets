@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import { Analytics } from '@vercel/analytics/next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
@@ -29,6 +30,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 {/* Provider lives in the layout so the wallet connection and
                     sandbox portfolio persist across client-side navigation. */}
                 <Providers>{children}</Providers>
+                <Analytics />
             </body>
         </html>
     );

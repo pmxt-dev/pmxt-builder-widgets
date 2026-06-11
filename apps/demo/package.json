@@ -9,6 +9,7 @@
         "registry": "node scripts/build-registry.mjs"
     },
     "dependencies": {
+        "@vercel/analytics": "^2.0.1",
         "next": "^16.1.1",
         "pmxt-widgets": "workspace:*",
         "react": "^19.2.0",
