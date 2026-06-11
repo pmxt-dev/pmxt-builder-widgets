@@ -31,6 +31,7 @@ import {
  * until the user revokes the site in the extension.
  */
 const DISCONNECTED_KEY = 'pmxt-widgets:disconnected';
+const LAST_WALLET_KEY = 'pmxt-widgets:last-wallet';
 
 function rememberDisconnected(disconnected: boolean): void {
     try {
@@ -49,6 +50,27 @@ function wasDisconnected(): boolean {
         return window.localStorage.getItem(DISCONNECTED_KEY) === '1';
     } catch {
         return false;
+    }
+}
+
+function rememberLastWallet(id: WalletId | null): void {
+    try {
+        if (id) {
+            window.localStorage.setItem(LAST_WALLET_KEY, id);
+        } else {
+            window.localStorage.removeItem(LAST_WALLET_KEY);
+        }
+    } catch {
+        // Storage unavailable — restore falls back to detection order.
+    }
+}
+
+function readLastWallet(): WalletId | null {
+    try {
+        const v = window.localStorage.getItem(LAST_WALLET_KEY);
+        return v === 'metamask' || v === 'phantom' ? v : null;
+    } catch {
+        return null;
     }
 }
 
@@ -151,13 +173,20 @@ export function PmxtProvider({
 
     // Silently restore an existing authorization (no wallet popup) so the
     // connection survives navigation and reloads — unless the user
-    // explicitly disconnected. The first installed wallet with an authorized
-    // account wins.
+    // explicitly disconnected. Prefer the wallet the user most recently
+    // connected; only fall back to detection order when no preference is
+    // remembered (e.g. first visit, or storage cleared).
     useEffect(() => {
         if (wallet || sandbox || wasDisconnected()) return;
         let cancelled = false;
         (async () => {
-            for (const id of detectWallets()) {
+            const detected = detectWallets();
+            const last = readLastWallet();
+            const order: WalletId[] =
+                last && detected.includes(last)
+                    ? [last, ...detected.filter((id) => id !== last)]
+                    : detected;
+            for (const id of order) {
                 try {
                     const accounts = await getAuthorizedAccounts(
                         getInjectedProvider(id),
@@ -207,6 +236,7 @@ export function PmxtProvider({
             if (accounts[0]) {
                 setConnectedWallet(id ?? null);
                 rememberDisconnected(false);
+                rememberLastWallet(id ?? null);
             }
         } catch (err: unknown) {
             // A rejected prompt must not vanish silently — surface it so
@@ -221,6 +251,7 @@ export function PmxtProvider({
 
     const disconnect = useCallback(() => {
         rememberDisconnected(true);
+        rememberLastWallet(null);
         setInjectedAddress(null);
         setConnectedWallet(null);
     }, []);
