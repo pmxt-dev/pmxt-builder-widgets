@@ -1,5 +1,4 @@
 # PMXT Builder Widgets
-
 Copy-paste React components for building on prediction markets. Search markets, render orderbooks and charts, and run a full non-custodial buy/sell flow — Polymarket and Opinion today, more venues as PMXT escrow expands — powered by the [PMXT](https://pmxt.dev) unified API.
 
 Every discovery widget is interactive out of the box: click an outcome and the card expands into a live buy/sell ticket in place. Wire your own `onPickOutcome`/`onClick` only when you want a custom flow.
@@ -19,6 +18,11 @@ Built for the **PMXT Builders Programme**. Two ways to consume:
    ```
 
 ## Quickstart
+
+1. Register an account on pmxt.dev.
+2. Enable builder mode on pmxt.dev/dashboard
+3. Get an api key at [pmxt.dev/dashboard](https://www.pmxt.dev/dashboard/api-keys)
+4. Start generating revenue from your users trading!
 
 ```tsx
 import { PmxtProvider, MarketSearch } from 'pmxt-widgets';
