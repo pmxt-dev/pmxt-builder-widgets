@@ -7,7 +7,17 @@ React widgets that let your users discover prediction markets and trade them ins
 - Works as copy-paste shadcn-style components or as a versioned npm package.
 - Sandbox mode lets you demo the full flow with play money before going live.
 
-![PMXT widget catalog](docs/screenshots/widget-catalog.png)
+## Widget screenshots
+
+These are the actual embeddable widgets, cropped out of the demo app.
+
+| Market search | Top markets |
+| --- | --- |
+| ![Market Search widget](docs/screenshots/market-search-widget.png) | ![Top Markets widget](docs/screenshots/top-markets-widget.png) |
+
+| Market card | Order ticket |
+| --- | --- |
+| ![Market Card widget](docs/screenshots/market-card-widget.png) | ![Order Ticket widget](docs/screenshots/order-ticket-widget.png) |
 
 ## Get started in 5 minutes
 
@@ -42,8 +52,6 @@ export default function App() {
     );
 }
 ```
-
-![Market Search widget configurator](docs/screenshots/market-search-configurator.png)
 
 ## What you can ship
 
