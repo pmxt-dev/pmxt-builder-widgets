@@ -1,126 +1,172 @@
 # PMXT Builder Widgets
-Copy-paste React components for building on prediction markets. Search markets, render orderbooks and charts, and run a full non-custodial buy/sell flow — Polymarket and Opinion today, more venues as PMXT escrow expands — powered by the [PMXT](https://pmxt.dev) unified API.
 
-Every discovery widget is interactive out of the box: click an outcome and the card expands into a live buy/sell ticket in place. Wire your own `onPickOutcome`/`onClick` only when you want a custom flow.
+React widgets that let your users discover prediction markets and trade them inside your product. PMXT handles the multi-venue trading rail; you get a fast UI path to a new outcome: collect fees on your users' trading activity.
 
-Built for the **PMXT Builders Programme**. Two ways to consume:
+- One integration for Polymarket and Opinion today, with more venues as PMXT escrow expands.
+- Discovery widgets turn into trade tickets automatically: users click an outcome, sign, and trade.
+- Works as copy-paste shadcn-style components or as a versioned npm package.
+- Sandbox mode lets you demo the full flow with play money before going live.
 
-1. **Copy-paste (shadcn-style registry)** — own the code, restyle freely:
+![PMXT widget catalog](docs/screenshots/widget-catalog.png)
 
-   ```bash
-   npx shadcn@latest add https://widgets.pmxt.dev/r/order-ticket.json
-   ```
+## Get started in 5 minutes
 
-2. **npm package** — versioned dependency:
+1. Create a PMXT account: https://pmxt.dev
+2. Enable builder mode in your dashboard.
+3. Create an API key: https://www.pmxt.dev/dashboard/api-keys
+4. Add the widgets to your app.
+5. Route widget requests through a tiny server-side proxy so your PMXT key stays private.
 
-   ```bash
-   npm install pmxt-widgets
-   ```
+Install from npm:
 
-## Quickstart
+```bash
+npm install pmxt-widgets
+```
 
-1. Register an account on pmxt.dev.
-2. Enable builder mode on pmxt.dev/dashboard
-3. Get an api key at [pmxt.dev/dashboard](https://www.pmxt.dev/dashboard/api-keys)
-4. Start generating revenue from your users trading!
+Or copy one widget into your codebase with the shadcn registry:
+
+```bash
+npx shadcn@latest add https://widgets.pmxt.dev/r/order-ticket.json
+```
+
+Then render a market search. Picking an outcome opens an inline trading card with no extra wiring:
 
 ```tsx
-import { PmxtProvider, MarketSearch } from 'pmxt-widgets';
+import { MarketSearch, PmxtProvider } from 'pmxt-widgets';
 
 export default function App() {
     return (
         <PmxtProvider config={{ apiUrl: '/api/pmxt', tradeUrl: '/api/trade' }}>
-            {/* Picking a result renders an expanded, tradable card below
-                the input — zero wiring. Pass onPick for a custom flow. */}
             <MarketSearch venues={['polymarket', 'opinion']} />
         </PmxtProvider>
     );
 }
 ```
 
-**Every widget bills against a PMXT API key** — get one at [pmxt.dev/dashboard](https://pmxt.dev/dashboard). `apiUrl`/`tradeUrl` should point at thin server-side proxies that attach your `Authorization: Bearer <PMXT_API_KEY>` header — never ship the key to the browser. The demo app ships reference proxy routes you can copy (`apps/demo/app/api/pmxt`, `apps/demo/app/api/trade`); the demo's trade proxy forwards the visitor's own key (entered in widget settings) so live trading always runs on the visitor's PMXT account.
+![Market Search widget configurator](docs/screenshots/market-search-configurator.png)
 
-Tailwind users installing from npm: add the package source to your content scan:
+## What you can ship
+
+### 1. Market discovery
+
+Use `MarketSearch`, `TopMarkets`, `MarketCard`, `EventCard`, `MatchedMarkets`, and `MarketTicker` to help users find high-volume markets across venues.
+
+Best for: search boxes, home-page market feeds, event pages, newsletters, and trading dashboards.
+
+### 2. Live market data
+
+Use `PriceChart`, `OrderBookWidget`, `ExecutionQuote`, and `RecentTrades` to show the data users need before placing a trade.
+
+Best for: research pages, market detail pages, and power-user dashboards.
+
+### 3. Trading and wallet flows
+
+Use `OrderTicket`, `InlineTradePanel`, `TradingPanel`, `Positions`, `OpenOrdersTable`, `TradeHistory`, `BalanceCard`, and `WalletPanel` to run the full PMXT trading flow.
+
+Best for: embedded trading, portfolio pages, deposit/withdraw UX, and one-click sell flows.
+
+## The simple mental model
+
+Your app owns the user experience. PMXT supplies the trading API and escrow flow.
+
+1. Your user discovers a market in a widget.
+2. The widget asks your server proxy for a quote.
+3. The user signs the order in their wallet.
+4. PMXT submits the trade to the selected venue.
+5. Builder fees are attributed to your PMXT builder account.
+
+## API keys and proxies
+
+Every live widget request uses a PMXT API key. Keep that key on your server; never ship it to the browser.
+
+Your browser should call your own routes:
+
+```tsx
+<PmxtProvider config={{ apiUrl: '/api/pmxt', tradeUrl: '/api/trade' }}>
+    <App />
+</PmxtProvider>
+```
+
+Those routes should forward to PMXT with:
+
+```http
+Authorization: Bearer YOUR_PMXT_API_KEY
+```
+
+The demo app includes copyable reference routes:
+
+- `apps/demo/app/api/pmxt` for read-only market data
+- `apps/demo/app/api/trade` for trading requests
+
+## Try sandbox mode first
+
+Sandbox mode uses live market data but simulated trading: a demo wallet, $1,000 of play USDC, quoted fills, balances, positions, open orders, and trade history. No real order reaches the trading API.
+
+```tsx
+<PmxtProvider config={{ apiUrl: '/api/pmxt' }} sandbox>
+    <App />
+</PmxtProvider>
+```
+
+Use sandbox mode for demos, onboarding, QA, and screenshots. Remove `sandbox` and add a live `tradeUrl` when you are ready for real trading.
+
+## Tailwind setup
+
+If you install from npm, include the widget package in your Tailwind content scan:
 
 ```css
 /* globals.css (Tailwind v4) */
 @source "../node_modules/pmxt-widgets/src";
 ```
 
-## The widgets
-
-| Tier | Widget | What it does |
-| --- | --- | --- |
-| Discovery | `MarketSearch` | Unified search across every venue in parallel, with a Markets/Events toggle |
-| Discovery | `TopMarkets` | Top markets or events, ranked by 24h volume / all-time volume / liquidity, with venue tabs |
-| Discovery | `MarketCard` / `EventCard` | Single market / event with clickable outcome prices |
-| Discovery | `MarketTicker` | Scrolling price marquee for headers |
-| Discovery | `MatchedMarkets` | Same market matched across venues with price spread |
-| Discovery | `VenueBadge` / `PriceChip` | Primitives: venue chip, price pill with 24h trend |
-| Market data | `OrderBookWidget` | Live bid/ask ladder with depth bars |
-| Market data | `PriceChart` | OHLCV close-price chart (pure SVG, zero deps) |
-| Market data | `ExecutionQuote` | VWAP quote for a given size, walked from the live book |
-| Market data | `RecentTrades` | Public trade feed |
-| Trading | `OrderTicket` | Full buy/sell: quote → EIP-712 sign → submit (market + limit) |
-| Trading | `InlineTradePanel` | Outcome tabs + compact OrderTicket — the built-in expand-to-trade panel the discovery cards render |
-| Trading | `BalanceCard` | USDC escrow balance |
-| Trading | `Positions` | Held outcome tokens with one-click sell |
-| Trading | `OpenOrdersTable` | Resting limit orders with signed cancel |
-| Trading | `TradeHistory` | Past fills with explorer links |
-| Composite | `TradingPanel` | Card + chart + book + ticket in one embed |
-
-All widgets are self-contained: React 18+, Tailwind classes, zero runtime dependencies (no react-query, no chart libs, no icon packs). Data flows through `PmxtProvider` → tiny built-in polling hooks.
-
-## Theming
-
-Widgets ship light + dark styles (Tailwind class-based dark mode — add `dark` to any ancestor) and read their accent colors from CSS variables you can override in your stylesheet:
+Widgets support light and dark mode and read colors from CSS variables:
 
 ```css
 :root {
-    --pmxt-accent: #2563eb;    /* CTA buttons & venue accent  */
-    --pmxt-positive: #059669;  /* Yes/buy states & payouts    */
-    --pmxt-negative: #dc2626;  /* No/sell states              */
+    --pmxt-accent: #2563eb;
+    --pmxt-positive: #059669;
+    --pmxt-negative: #dc2626;
 }
 ```
 
-Confetti on filled orders is on by default — `<OrderTicket confetti={false} />` to disable (always respects `prefers-reduced-motion`).
+## Widget reference
 
-## Sandbox mode
+| Outcome | Widgets |
+| --- | --- |
+| Find tradable markets | `MarketSearch`, `TopMarkets`, `MarketCard`, `EventCard`, `MatchedMarkets`, `MarketTicker` |
+| Show venue + price primitives | `VenueBadge`, `PriceChip` |
+| Show market data | `OrderBookWidget`, `PriceChart`, `ExecutionQuote`, `RecentTrades` |
+| Let users trade | `OrderTicket`, `InlineTradePanel`, `TradingPanel` |
+| Manage account state | `WalletPanel`, `BalanceCard`, `Positions`, `OpenOrdersTable`, `TradeHistory` |
 
-Add one prop and every trading widget runs on play money:
-
-```tsx
-<PmxtProvider config={config} sandbox>
-```
-
-Market data stays live, but trading is fully simulated: a built-in demo wallet, $1,000 of starting USDC, quotes walked from the real order book, and in-memory fills that flow through `BalanceCard`, `Positions`, `OpenOrdersTable` and `TradeHistory`. No order ever reaches the trading API — tickets show a Sandbox badge and fills are labelled simulated. Perfect for demos, onboarding, and trying the widgets before funding escrow. (Filled orders also get a confetti burst — `fireConfetti`/`fireTradeConfetti` are exported if you want it elsewhere.)
+All widgets are self-contained React components with Tailwind classes and no runtime chart/query/icon dependencies. Data flows through `PmxtProvider` and small built-in polling hooks.
 
 ## Trading model
 
-Trading is live and non-custodial (Polymarket + Opinion settle on PMXT escrow), using the documented hosted trading API — the same `/v0` surface the official `pmxtjs`/`pmxt` SDKs use:
+Trading is non-custodial and uses the PMXT hosted trading API:
 
-1. `OrderTicket` quotes via `POST /v0/trade/build-order` → returns a `built_order_id`, a quote, and EIP-712 `typed_data`
-2. The user signs in their wallet (injected by default; bring your own signer via `PmxtProvider`'s `wallet` prop — wagmi, Privy, embedded wallets all fit the 1-method `PmxtSigner` interface)
-3. `POST /v0/trade/submit-order` (`built_order_id` + `signature`) executes; the widget renders filled / resting / pending / failed states
+1. `OrderTicket` quotes with `POST /v0/trade/build-order` and receives a `built_order_id`, quote, and EIP-712 `typed_data`.
+2. The user signs in their wallet. You can use the injected wallet by default or pass your own signer through `PmxtProvider` for wagmi, Privy, or embedded wallets.
+3. `POST /v0/trade/submit-order` executes with the `built_order_id` and signature.
 
-Account reads use `GET /v0/user/{address}/balances|positions|trades` and `GET /v0/orders/open`; cancels run the signed two-step `/v0/orders/cancel/build` → `/v0/orders/cancel` flow.
+Account reads use `GET /v0/user/{address}/balances|positions|trades` and `GET /v0/orders/open`. Cancels use `/v0/orders/cancel/build` then `/v0/orders/cancel`.
 
-Funds come from the user's PMXT escrow balance — deposit at [pmxt.dev/dashboard/wallet](https://pmxt.dev/dashboard/wallet).
+Funds live in the user's PMXT escrow balance. Users can deposit at https://pmxt.dev/dashboard/wallet or through `WalletPanel`.
 
-## Repo layout
-
-```
-packages/widgets    the pmxt-widgets package (source of truth)
-apps/demo           Next.js showcase + reference API proxies + registry host
-```
-
-## Develop
+## Develop locally
 
 ```bash
 pnpm install
-cp apps/demo/.env.example apps/demo/.env.local   # add your PMXT_API_KEY
+cp apps/demo/.env.example apps/demo/.env.local   # add PMXT_API_KEY
 pnpm dev                                          # demo on :3017
-pnpm test                                         # core lib unit tests
+pnpm test                                         # widget unit tests
 pnpm registry                                     # build /r/*.json registry items
-pnpm build                                        # build the npm package + demo
+pnpm build                                        # build package + demo
+```
+
+Repo layout:
+
+```text
+packages/widgets    pmxt-widgets package source
+apps/demo           Next.js showcase, API proxy examples, registry host
 ```
