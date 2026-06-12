@@ -11,13 +11,13 @@ React widgets that let your users discover prediction markets and trade them ins
 
 These are the actual embeddable widgets, cropped out of the demo app.
 
-| Market search | Top markets |
+| Top markets | Price chart |
 | --- | --- |
-| ![Market Search widget](docs/screenshots/market-search-widget.png) | ![Top Markets widget](docs/screenshots/top-markets-widget.png) |
+| ![Top Markets widget](docs/screenshots/top-markets-widget.png) | ![Price Chart widget](docs/screenshots/price-chart-widget.png) |
 
-| Market card | Order ticket |
+| Order book | Order ticket |
 | --- | --- |
-| ![Market Card widget](docs/screenshots/market-card-widget.png) | ![Order Ticket widget](docs/screenshots/order-ticket-widget.png) |
+| ![Order Book widget](docs/screenshots/order-book-widget.png) | ![Order Ticket widget](docs/screenshots/order-ticket-widget.png) |
 
 ## Get started in 5 minutes
 
