@@ -29,7 +29,7 @@ import {
     type PayToken,
 } from '../lib/swap';
 import { shortAddress } from '../lib/format';
-import { ChevronDownIcon, SpinnerIcon } from '../lib/icons';
+import { CheckIcon, ChevronDownIcon, CopyIcon, SpinnerIcon } from '../lib/icons';
 import { ConnectWalletButtons } from '../lib/connect-buttons';
 
 /** Props for {@link WalletPanel}. */
@@ -112,9 +112,7 @@ export function WalletPanel({ showHistory = true, className = '' }: WalletPanelP
                 <div>
                     <Header />
                     <div className="mt-1 flex items-center gap-2">
-                        <span className="font-mono text-xs text-zinc-500 dark:text-zinc-400">
-                            {shortAddress(address)}
-                        </span>
+                        <CopyAddress address={address} />
                         {wallet.canDisconnect && (
                             <button
                                 type="button"
@@ -212,6 +210,48 @@ function Header() {
     );
 }
 
+/** Truncated address that copies the full address on click. */
+function CopyAddress({ address }: { address: string }) {
+    const [copied, setCopied] = useState(false);
+
+    async function copy() {
+        try {
+            await navigator.clipboard.writeText(address);
+        } catch {
+            // Clipboard API unavailable (non-secure context): legacy fallback.
+            const ta = document.createElement('textarea');
+            ta.value = address;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            ta.remove();
+        }
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+    }
+
+    return (
+        <button
+            type="button"
+            onClick={() => void copy()}
+            title={`${address} — click to copy`}
+            className="group inline-flex items-center gap-1.5 font-mono text-xs text-zinc-500 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+        >
+            {shortAddress(address)}
+            {copied ? (
+                <>
+                    <CheckIcon className="size-3 text-emerald-600 dark:text-emerald-400" />
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400">
+                        copied
+                    </span>
+                </>
+            ) : (
+                <CopyIcon className="size-3 text-zinc-400 opacity-60 transition-opacity group-hover:opacity-100 dark:text-zinc-500" />
+            )}
+        </button>
+    );
+}
+
 // ---- Shared tx plumbing ---------------------------------------------------
 
 async function getWalletProvider(
@@ -256,6 +296,11 @@ function DepositForm({ client, address, onDone }: FormProps) {
     const [amount, setAmount] = useState('');
     const [stage, setStage] = useState<DepositStage>({ name: 'idle' });
     const [paySymbol, setPaySymbol] = useState('USDC.e');
+    // Tracks whether the user has manually picked a token from the dropdown.
+    // Until they do, we may auto-switch off the USDC.e default when their
+    // wallet holds a different stablecoin instead (common on Polygon, where
+    // users routinely hold native USDC but not the bridged USDC.e).
+    const tokenTouchedRef = useRef(false);
 
     const payToken =
         PAY_TOKENS.find((t) => t.symbol === paySymbol) ?? USDCE_PAY_TOKEN;
@@ -263,7 +308,6 @@ function DepositForm({ client, address, onDone }: FormProps) {
 
     const amountNum = Number.parseFloat(amount) || 0;
     const isBusy = stage.name === 'busy';
-    const canSubmit = amountNum > 0 && !isBusy;
 
     async function sendTx(
         provider: Eip1193Provider,
@@ -435,6 +479,39 @@ function DepositForm({ client, address, onDone }: FormProps) {
     const balance = balances.get(payToken.symbol);
     const estimate = useSwapEstimate(payToken, amountNum, isDirect);
 
+    // If the user hasn't picked a token and the default (USDC.e) is empty,
+    // switch to the highest-balance stablecoin they actually hold. Stops the
+    // "Balance: 0 USDC.e" footgun where users get a wallet-side
+    // "transfer amount exceeds balance" revert instead of in-UI feedback.
+    useEffect(() => {
+        if (tokenTouchedRef.current) return;
+        if (balances.size === 0) return;
+        const current = balances.get(paySymbol) ?? BigInt(0);
+        if (current > BigInt(0)) return;
+        const STABLE_SYMBOLS = ['USDC', 'USDC.e', 'USDT', 'DAI'];
+        let bestSymbol: string | null = null;
+        let bestHuman = 0;
+        for (const t of PAY_TOKENS) {
+            if (!STABLE_SYMBOLS.includes(t.symbol)) continue;
+            const raw = balances.get(t.symbol);
+            if (raw == null || raw === BigInt(0)) continue;
+            const human = Number(raw) / 10 ** t.decimals;
+            if (human > bestHuman) {
+                bestHuman = human;
+                bestSymbol = t.symbol;
+            }
+        }
+        if (bestSymbol && bestSymbol !== paySymbol) {
+            setPaySymbol(bestSymbol);
+        }
+    }, [balances, paySymbol]);
+
+    const balanceHuman =
+        balance != null ? Number(balance) / 10 ** payToken.decimals : null;
+    const insufficientBalance =
+        balanceHuman != null && amountNum > 0 && amountNum > balanceHuman;
+    const canSubmit = amountNum > 0 && !isBusy && !insufficientBalance;
+
     function setMax() {
         if (balance == null) return;
         // Keep a gas cushion when spending the native token.
@@ -452,7 +529,10 @@ function DepositForm({ client, address, onDone }: FormProps) {
                     amount={amount}
                     onAmountChange={setAmount}
                     token={payToken}
-                    onTokenChange={(t) => setPaySymbol(t.symbol)}
+                    onTokenChange={(t) => {
+                        tokenTouchedRef.current = true;
+                        setPaySymbol(t.symbol);
+                    }}
                     balances={balances}
                     disabled={isBusy}
                 />
@@ -485,11 +565,13 @@ function DepositForm({ client, address, onDone }: FormProps) {
                     )}
                 </div>
                 <button type="submit" disabled={!canSubmit} className={primaryBtn}>
-                    {stage.name === 'idle' || stage.name === 'done'
-                        ? isDirect
-                            ? 'Deposit USDC'
-                            : `Swap ${payToken.symbol} & deposit`
-                        : depositButtonLabel(stage)}
+                    {insufficientBalance
+                        ? `Insufficient ${payToken.symbol} balance`
+                        : stage.name === 'idle' || stage.name === 'done'
+                          ? isDirect
+                              ? 'Deposit USDC'
+                              : `Swap ${payToken.symbol} & deposit`
+                          : depositButtonLabel(stage)}
                 </button>
             </form>
             {!isDirect && (
