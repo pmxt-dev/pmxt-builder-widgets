@@ -45,11 +45,13 @@ export default function App() {
 
 Clicking an outcome opens a tradable card. Your user signs; PMXT routes the trade; your builder account gets attributed.
 
-## API key
+## Go live
 
-Get a key at https://www.pmxt.dev/dashboard/api-keys.
-
-Keep it server-side. Point `apiUrl` and `tradeUrl` at small proxy routes that add:
+1. Sign in at https://pmxt.dev.
+2. Enable builder mode in the dashboard.
+3. Create an API key at https://www.pmxt.dev/dashboard/api-keys.
+4. Put the key on your server.
+5. Point `apiUrl` and `tradeUrl` at proxy routes that add:
 
 ```http
 Authorization: Bearer YOUR_PMXT_KEY
