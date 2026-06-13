@@ -1,6 +1,6 @@
 {
   "name": "pmxt-widgets",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "description": "Copy-paste React widgets for building on PMXT \u2014 prediction market search, orderbooks, charts, and a full non-custodial buy/sell flow.",
   "license": "MIT",
   "type": "module",
