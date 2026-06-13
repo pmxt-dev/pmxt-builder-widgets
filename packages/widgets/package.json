@@ -1,41 +1,65 @@
 {
   "name": "pmxt-widgets",
-  "version": "0.1.0",
-  "description": "PMXT prediction-market UI widgets",
+  "version": "0.5.4",
+  "description": "Copy-paste React widgets for building on PMXT \u2014 prediction market search, orderbooks, charts, and a full non-custodial buy/sell flow.",
   "license": "MIT",
+  "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs",
-      "types": "./dist/index.d.ts"
-    }
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
-    "dist"
+    "dist",
+    "src",
+    "!src/**/*.test.ts"
   ],
+  "sideEffects": false,
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "dev": "tsup --watch"
+    "prepublishOnly": "pnpm typecheck && pnpm test && tsup"
   },
   "peerDependencies": {
     "react": ">=18",
     "react-dom": ">=18"
   },
   "devDependencies": {
-    "@types/react": "^18.0.0",
-    "@types/react-dom": "^18.0.0",
-    "react": "^18.0.0",
-    "react-dom": "^18.0.0",
-    "tsup": "^8.0.0",
-    "typescript": "^5.0.0",
-    "vitest": "^2.0.0"
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
   },
-  "publishConfig": {
-    "access": "public"
+  "keywords": [
+    "pmxt",
+    "prediction-markets",
+    "polymarket",
+    "opinion",
+    "react",
+    "widgets",
+    "limitless"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pmxt-dev/pmxt-builder-widgets.git"
+  },
+  "homepage": "https://github.com/pmxt-dev/pmxt-builder-widgets#readme",
+  "bugs": {
+    "url": "https://github.com/pmxt-dev/pmxt-builder-widgets/issues"
   }
 }
