@@ -15,7 +15,7 @@ export type CatalogVenue =
     | (string & {});
 
 /** Venues that settle through PMXT escrow (tradable venues). */
-export type TradingVenue = 'polymarket' | 'opinion';
+export type TradingVenue = 'polymarket' | 'opinion' | 'limitless';
 
 /** A single tradable outcome of a market. */
 export interface PmxtOutcome {
