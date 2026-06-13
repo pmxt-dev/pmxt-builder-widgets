@@ -1,0 +1,67 @@
+name: Publish pmxt-widgets to npm
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  release:
+    name: Build & publish
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm --filter pmxt-widgets typecheck
+
+      - name: Test
+        run: pnpm --filter pmxt-widgets test
+
+      - name: Build
+        run: pnpm --filter pmxt-widgets build
+
+      - name: Check if version is already published
+        id: version_check
+        run: |
+          CURRENT=$(node -p "require('./packages/widgets/package.json').version")
+          PUBLISHED=$(npm view pmxt-widgets version 2>/dev/null || echo "none")
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+          echo "published=$PUBLISHED" >> "$GITHUB_OUTPUT"
+          if [ "$CURRENT" = "$PUBLISHED" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Version $CURRENT already published — skipping publish step."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "Publishing $CURRENT (registry has: $PUBLISHED)."
+          fi
+
+      - name: Publish to npm
+        if: steps.version_check.outputs.skip != 'true'
+        run: pnpm --filter pmxt-widgets publish --access public --no-git-checks --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
