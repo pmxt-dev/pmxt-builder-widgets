@@ -50,6 +50,24 @@ function VenueMark({ venue }: { venue: CatalogVenue }) {
                     />
                 </svg>
             );
+        case 'limitless':
+            // Official Limitless mark (asterisk-like sunburst) from limitless.exchange.
+            // Rendered on the brand violet square so it reads at 18×18 alongside
+            // the other venue badges.
+            return (
+                <span
+                    className={`flex ${size} items-center justify-center rounded-[5px] bg-[#7C3AED]`}
+                    aria-hidden="true"
+                >
+                    <svg viewBox="0 0 500 500" fill="none" className="size-[14px]">
+                        <path fillRule="evenodd" clipRule="evenodd" d="M229.93 404.121V84.033h17.245v320.088H229.93Z" fill="white" />
+                        <path fillRule="evenodd" clipRule="evenodd" d="M24.56 283.806l440.718-24.851.982 17.05L25.539 300.856l-.979-17.05Z" fill="white" />
+                        <path fillRule="evenodd" clipRule="evenodd" d="M236.148 271.779l157.613-50.437 5.301 16.252-157.612 50.436-5.302-16.251Z" fill="white" />
+                        <path fillRule="evenodd" clipRule="evenodd" d="M230.667 288.892l58.715-132.146 15.785 6.879-58.718 132.146-15.782-6.879Z" fill="white" />
+                        <path fillRule="evenodd" clipRule="evenodd" d="M146.045 221.815l223.516 109.477-7.646 15.309-223.159-109.478 7.289-15.308Z" fill="white" />
+                    </svg>
+                </span>
+            );
         default: {
             const theme = venueTheme(venue);
             const letter = venueLabel(venue).charAt(0).toUpperCase();
