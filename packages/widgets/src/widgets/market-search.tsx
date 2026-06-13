@@ -116,7 +116,7 @@ type Picked =
  * below the input. Pass onPick/onPickEvent to take over.
  */
 export function MarketSearch({
-    venues = ['polymarket', 'opinion'],
+    venues = ['polymarket', 'opinion', 'limitless'],
     placeholder = 'Search prediction markets…',
     defaultKind = 'markets',
     defaultMatched = true,
