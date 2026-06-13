@@ -96,7 +96,7 @@ function clusterMetric(cluster: MarketCluster, sortBy: TrendingSort): number {
  */
 export function TopMarkets({
     mode = 'unified',
-    venues = ['polymarket', 'opinion'],
+    venues = ['polymarket', 'opinion', 'limitless'],
     limit = 4,
     kind = 'markets',
     sortBy = 'volume24h',

@@ -47,7 +47,7 @@ export interface MatchedMarketsProps {
 export function MatchedMarkets({
     query,
     limit = 5,
-    venues = ['polymarket', 'opinion'],
+    venues = ['polymarket', 'opinion', 'limitless'],
     onPickOutcome,
     className = '',
 }: MatchedMarketsProps) {
@@ -126,7 +126,7 @@ export interface MatchedMarketRowProps {
  */
 export function MatchedMarketRow({
     cluster,
-    venues = ['polymarket', 'opinion'],
+    venues = ['polymarket', 'opinion', 'limitless'],
     onPickOutcome,
     className = '',
 }: MatchedMarketRowProps) {
