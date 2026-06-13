@@ -1,0 +1,164 @@
+name: Publish pmxt-widgets to npm
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  publish-npm:
+    name: Build & publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - name: Extract version from tag
+        id: get_version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "Publishing version: $VERSION"
+
+          # Detect force release (skip tests) — tag suffix 'f'
+          if [[ "$VERSION" == *f ]]; then
+            echo "skip_tests=true" >> $GITHUB_OUTPUT
+            echo "Force release detected (tag ends in 'f') — skipping tests"
+            VERSION=${VERSION%f}
+          else
+            echo "skip_tests=false" >> $GITHUB_OUTPUT
+          fi
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Final publish version: $VERSION"
+
+          # Detect pre-release (alpha/beta/rc)
+          if [[ "$VERSION" =~ (alpha|beta|rc) ]]; then
+            echo "npm_tag=beta" >> $GITHUB_OUTPUT
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+            echo "Pre-release — publishing with 'beta' tag"
+          else
+            echo "npm_tag=latest" >> $GITHUB_OUTPUT
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+            echo "Stable release — publishing with 'latest' tag"
+          fi
+
+      - name: Update package version
+        run: |
+          cd packages/widgets
+          npm version "${{ steps.get_version.outputs.version }}" --no-git-tag-version --allow-same-version
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm --filter pmxt-widgets typecheck
+
+      - name: Test
+        if: steps.get_version.outputs.skip_tests != 'true'
+        run: pnpm --filter pmxt-widgets test
+
+      - name: Build
+        run: pnpm --filter pmxt-widgets build
+
+      - name: Check if version is already published
+        id: version_check
+        run: |
+          PUBLISHED=$(npm view pmxt-widgets@${{ steps.get_version.outputs.version }} version 2>/dev/null || echo "none")
+          if [ "$PUBLISHED" = "${{ steps.get_version.outputs.version }}" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Version ${{ steps.get_version.outputs.version }} already on npm — skipping publish."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish to npm
+        if: steps.version_check.outputs.skip != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          log_file="$(mktemp)"
+
+          if pnpm --filter pmxt-widgets publish \
+            --access public \
+            --no-git-checks \
+            --provenance \
+            --tag "${NPM_TAG}" 2>&1 | tee "${log_file}"; then
+            exit 0
+          fi
+
+          if grep -Eq 'IDENTITY_TOKEN_READ_ERROR|TLOG_CREATE_ENTRY_ERROR|provenance|transparency log' "${log_file}"; then
+            echo "Provenance publish failed — retrying without provenance."
+            pnpm --filter pmxt-widgets publish \
+              --access public \
+              --no-git-checks \
+              --tag "${NPM_TAG}"
+            exit 0
+          fi
+
+          cat "${log_file}"
+          exit 1
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TAG: ${{ steps.get_version.outputs.npm_tag }}
+
+  create-github-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: publish-npm
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: get_version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          if [[ "$VERSION" == *f ]]; then
+            VERSION=${VERSION%f}
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          if [[ "$VERSION" =~ (alpha|beta|rc) ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: "v${{ steps.get_version.outputs.version }}"
+          body: |
+            ## Installation
+
+            ```bash
+            npm install pmxt-widgets@${{ steps.get_version.outputs.version }}
+            ```
+
+            ## Links
+            - [npm: pmxt-widgets](https://www.npmjs.com/package/pmxt-widgets/v/${{ steps.get_version.outputs.version }})
+          prerelease: ${{ steps.get_version.outputs.is_prerelease }}
+          generate_release_notes: true
+          make_latest: ${{ steps.get_version.outputs.is_prerelease == 'false' }}

@@ -1,7 +1,7 @@
 {
   "name": "pmxt-widgets",
-  "version": "0.5.3",
-  "description": "Copy-paste React widgets for building on PMXT — prediction market search, orderbooks, charts, and a full non-custodial buy/sell flow.",
+  "version": "0.5.4",
+  "description": "Copy-paste React widgets for building on PMXT \u2014 prediction market search, orderbooks, charts, and a full non-custodial buy/sell flow.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -51,7 +51,8 @@
     "polymarket",
     "opinion",
     "react",
-    "widgets"
+    "widgets",
+    "limitless"
   ],
   "repository": {
     "type": "git",
