@@ -75,11 +75,11 @@ export function venueTheme(venue: CatalogVenue | null | undefined): VenueTheme {
 }
 
 /** Venues that settle through PMXT escrow. */
-export const TRADABLE_VENUES: TradingVenue[] = ['polymarket', 'opinion'];
+export const TRADABLE_VENUES: TradingVenue[] = ['polymarket', 'opinion', 'limitless'];
 
 /** Type guard: true only for venues tradable through PMXT escrow. */
 export function isTradableVenue(
     venue: CatalogVenue | null | undefined,
 ): venue is TradingVenue {
-    return venue === 'polymarket' || venue === 'opinion';
+    return venue === 'polymarket' || venue === 'opinion' || venue === 'limitless';
 }
