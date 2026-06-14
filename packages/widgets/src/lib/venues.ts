@@ -46,11 +46,14 @@ const THEMES: Record<string, VenueTheme> = {
         dot: 'bg-emerald-600',
     },
     limitless: {
-        bg: 'bg-violet-600',
-        bgHover: 'hover:bg-violet-700',
-        text: 'text-violet-700',
-        tint: 'bg-violet-50',
-        dot: 'bg-violet-600',
+        // Official Limitless brand: lime #C3FF00 / black.
+        // The text uses a darker lime swatch so cents figures stay
+        // legible on white card backgrounds.
+        bg: 'bg-[#C3FF00]',
+        bgHover: 'hover:bg-[#A8E000]',
+        text: 'text-lime-700',
+        tint: 'bg-lime-50',
+        dot: 'bg-[#C3FF00]',
     },
     opinion: {
         bg: 'bg-[var(--pmxt-accent-opinion,#18181b)]',

@@ -332,8 +332,11 @@ export interface PmxtOrder {
     market_title?: string | null;
     /**
      * Operator-reported failure reason on `status: 'failed'` / `'no_fill'`
-     * orders, surfaced from the latest `task_state_log` row. Drives the
-     * error copy in the order-ticket Done stage.
+     * orders, e.g. "Insufficient escrow balance: 0.05 USDC < 5.00 USDC" or
+     * "Limitless place_order failed: Insufficient conditional token balance".
+     * Surfaced from the latest `task_state_log` row so users see the real
+     * cause instead of a generic message; drives the error copy in the
+     * order-ticket Done stage.
      */
     error?: string | null;
 }

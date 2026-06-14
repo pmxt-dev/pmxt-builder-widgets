@@ -108,7 +108,12 @@ export function TopMarkets({
     const [venue, setVenue] = useState<CatalogVenue>(venues[0] ?? 'polymarket');
     const [userSort, setUserSort] = useState<TrendingSort | null>(null);
     const [userKind, setUserKind] = useState<TrendingKind | null>(null);
-    const [matched, setMatched] = useState(mode === 'matches');
+    // Matched view defaults ON for both 'unified' and 'matches' modes —
+    // cross-venue comparison is the headline experience; users can opt
+    // out via the toggle to see the raw per-venue stream.
+    const [matched, setMatched] = useState(
+        mode === 'matches' || mode === 'unified',
+    );
     const [page, setPage] = useState(0);
     const [search, setSearch] = useState('');
     const debouncedSearch = useDebounced(search, 350);

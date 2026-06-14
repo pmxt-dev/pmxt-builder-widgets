@@ -174,13 +174,18 @@ export class PmxtClient {
         outcomeId: string,
         depth = 10,
     ): Promise<OrderBook> {
-        const params = new URLSearchParams({
-            outcomeId,
-            limit: String(depth),
-        });
+        // The hosted catalog (api.pmxt.dev)'s GET query-to-args mapping for
+        // fetchOrderBook is broken: ?id=... returns "Invalid ID for OrderBook"
+        // and ?outcomeId=... resolves to undefined and 404s on the venue.
+        // POST {args: [tokenId]} is the canonical path the sidecar exposes
+        // — it works for all venues and bypasses the GET parsing entirely.
         let raw: unknown;
         try {
-            raw = await this.api<unknown>(`/api/${venue}/fetchOrderBook?${params}`);
+            raw = await this.api<unknown>(`/api/${venue}/fetchOrderBook`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ args: [outcomeId, depth] }),
+            });
         } catch (err: unknown) {
             // A missing book is a normal market state (resolved/illiquid),
             // not an exceptional failure — surface it as an empty book.
