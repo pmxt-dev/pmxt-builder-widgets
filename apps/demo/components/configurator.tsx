@@ -477,7 +477,7 @@ function ControlField({
                 <div className="space-y-1.5">
                     {label}
                     <div className="flex flex-wrap gap-1.5">
-                        {(control.options ?? ['polymarket', 'opinion']).map((venue) => {
+                        {(control.options ?? ['polymarket', 'opinion', 'limitless']).map((venue) => {
                             const active = selected.includes(venue);
                             return (
                                 <button
