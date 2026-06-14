@@ -145,7 +145,7 @@ function MarketCardPreview({ settings }: { settings: Settings }) {
 
 // ---- The registry ----------------------------------------------------------
 
-const VENUE_OPTIONS = ['polymarket', 'opinion'];
+const VENUE_OPTIONS = ['polymarket', 'opinion', 'limitless'];
 
 export const WIDGETS: WidgetDef[] = [
     {
@@ -158,7 +158,7 @@ export const WIDGETS: WidgetDef[] = [
                 kind: 'venues',
                 prop: 'venues',
                 label: 'Venues',
-                default: ['polymarket', 'opinion'],
+                default: ['polymarket', 'opinion', 'limitless'],
                 help: 'Venues included in results — the PMXT-tradable venues.',
             },
             {
@@ -245,7 +245,7 @@ export const WIDGETS: WidgetDef[] = [
                 kind: 'venues',
                 prop: 'venues',
                 label: 'Venues',
-                default: ['polymarket', 'opinion'],
+                default: ['polymarket', 'opinion', 'limitless'],
                 help: 'Venues to include (merged in unified mode, tabbed in separate).',
             },
             {
@@ -355,7 +355,7 @@ export const WIDGETS: WidgetDef[] = [
                 kind: 'venues',
                 prop: 'venues',
                 label: 'Venues',
-                default: ['polymarket', 'opinion'],
+                default: ['polymarket', 'opinion', 'limitless'],
                 help: 'Venues whose legs may appear — the PMXT-tradable venues.',
             },
             {
