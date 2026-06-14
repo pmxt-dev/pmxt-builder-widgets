@@ -130,7 +130,13 @@ export function OrderTicket({
     const book = useOrderBook(market.venue, market.tokenId || null, { depth: 5 });
     const bestAsk = book.data?.asks?.[0]?.price;
     const bestBid = book.data?.bids?.[0]?.price;
-    const fallbackPrice = market.price > 0 ? market.price : null;
+    // Live-only when an orderbook is being fetched. The catalog price is
+    // often stale (or off by an order of magnitude on thin venues like
+    // Limitless), and showing it first then swapping to the live bid/ask
+    // a beat later looks like a value flicker. Fall back to market.price
+    // ONLY when there's no orderbook to fetch at all (UUID-only picks).
+    const hasBook = market.tokenId != null && market.tokenId !== '';
+    const fallbackPrice = !hasBook && market.price > 0 ? market.price : null;
     const referencePrice = isBuy
         ? (bestAsk ?? fallbackPrice)
         : (bestBid ?? fallbackPrice);
