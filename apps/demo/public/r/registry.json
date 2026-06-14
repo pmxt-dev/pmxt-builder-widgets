@@ -122,6 +122,12 @@
       "type": "registry:component",
       "title": "Venue Badge",
       "description": "Venue Badge widget for PMXT prediction markets."
+    },
+    {
+      "name": "wallet-panel",
+      "type": "registry:component",
+      "title": "Wallet Panel",
+      "description": "Wallet Panel widget for PMXT prediction markets."
     }
   ]
 }

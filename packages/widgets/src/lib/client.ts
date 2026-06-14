@@ -276,6 +276,17 @@ export class PmxtClient {
         });
     }
 
+    /**
+     * `GET /v0/orders/{order_id}` — current lifecycle status of a submitted
+     * order, projected from the operator's task_state_log. Used to drive
+     * real-time progress while a submission settles on-chain.
+     */
+    fetchOrder(orderId: string): Promise<PmxtOrder> {
+        return this.trade<PmxtOrder>(
+            `/v0/orders/${encodeURIComponent(orderId)}`,
+        );
+    }
+
     async fetchBalances(address: string): Promise<PmxtBalance[]> {
         const res = await this.trade<unknown>(
             `/v0/user/${encodeURIComponent(address)}/balances`,

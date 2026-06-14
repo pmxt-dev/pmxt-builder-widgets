@@ -53,8 +53,18 @@ type Stage =
     | { name: 'quoted'; built: BuiltOrder }
     | { name: 'signing'; built: BuiltOrder }
     | { name: 'submitting'; built: BuiltOrder }
+    | { name: 'settling'; built: BuiltOrder; order: PmxtOrder }
     | { name: 'done'; order: PmxtOrder }
     | { name: 'error'; message: string };
+
+/**
+ * Server-side lifecycle states that mean "still working on it" — i.e. we
+ * should keep polling. Mirrors `_apply_lifecycle_status` in trading-api:
+ * 'accepted' / 'fulfilling' are in-flight, everything else is terminal.
+ */
+const IN_FLIGHT_STATUSES = new Set(['accepted', 'fulfilling', 'pending', 'unknown', '']);
+const STATUS_POLL_INTERVAL_MS = 1000;
+const STATUS_POLL_TIMEOUT_MS = 120_000;
 
 const BUY_QUICK_AMOUNTS = [1, 5, 10, 50] as const;
 const SELL_PCTS = [25, 50, 100] as const;
@@ -178,17 +188,32 @@ export function OrderTicket({
             });
             // Identify the outcome with the catalog UUID when known,
             // otherwise with the venue-native (venue, venue_outcome_id) pair.
+            // Limitless is forced to the venue-native shape — the same outcome
+            // is matched cross-venue in the catalog, so a UUID can collapse to
+            // a Polymarket-side token at the trading-api and silently target
+            // the wrong venue.
             const identification: Pick<
                 BuildOrderRequest,
                 'market_id' | 'outcome_id' | 'venue' | 'venue_outcome_id'
-            > = market.outcomeUuid
-                ? {
-                      outcome_id: market.outcomeUuid,
-                      ...(market.marketUuid
-                          ? { market_id: market.marketUuid }
-                          : {}),
-                  }
-                : { venue: market.venue, venue_outcome_id: market.tokenId };
+            > = market.venue === 'limitless'
+                ? { venue: market.venue, venue_outcome_id: market.tokenId }
+                : market.outcomeUuid
+                  ? {
+                        outcome_id: market.outcomeUuid,
+                        ...(market.marketUuid
+                            ? { market_id: market.marketUuid }
+                            : {}),
+                    }
+                  : { venue: market.venue, venue_outcome_id: market.tokenId };
+
+            // Limitless books are thin; the trading-api's default slippage
+            // rejects most $5 market FAKs even when the venue has a real
+            // book at the requested price. The Python SDK reference
+            // (scripts/limitless_api/02_buy.py) sends 20 — mirror it for
+            // parity. Polymarket / Opinion books are deep enough that the
+            // server default works, so gate the override to Limitless.
+            const slippageOverride =
+                market.venue === 'limitless' ? { slippage_pct: 20 } : {};
 
             const body: BuildOrderRequest = isLimit
                 ? {
@@ -207,6 +232,7 @@ export function OrderTicket({
                         order_type: 'market',
                         denom: 'usdc',
                         amount,
+                        ...slippageOverride,
                         user_address: address,
                     }
                   : {
@@ -215,6 +241,7 @@ export function OrderTicket({
                         order_type: 'market',
                         denom: 'shares',
                         amount: shares,
+                        ...slippageOverride,
                         user_address: address,
                     };
             const built = await client.buildOrder(body);
@@ -267,15 +294,25 @@ export function OrderTicket({
             }
 
             setStage({ name: 'submitting', built });
-            const order = await client.submitOrder({
+            // wait:false → operator returns task_id + status='accepted'
+            // immediately, then we poll GET /v0/orders/:id for real
+            // lifecycle progress (accepted → fulfilling → fulfilled/…).
+            const accepted = await client.submitOrder({
                 built_order_id: built.built_order_id,
                 signature,
                 pull_signature: pullSignature,
-                wait: true,
+                wait: false,
             });
-            setStage({ name: 'done', order });
+            const terminal = await pollOrderStatus(
+                client,
+                accepted,
+                (current) => {
+                    setStage({ name: 'settling', built, order: current });
+                },
+            );
+            setStage({ name: 'done', order: terminal });
             if (built.side === 'sell') void refetchPositions();
-            onDone?.(order);
+            onDone?.(terminal);
         } catch (err: unknown) {
             setStage({
                 name: 'error',
@@ -322,13 +359,20 @@ export function OrderTicket({
     const showQuote =
         stage.name === 'quoted' ||
         stage.name === 'signing' ||
-        stage.name === 'submitting';
+        stage.name === 'submitting' ||
+        stage.name === 'settling';
+    const settlingStatus =
+        stage.name === 'settling' ? (stage.order.status || 'accepted') : null;
     const busyLabel =
         stage.name === 'signing'
             ? 'Sign in your wallet…'
             : stage.name === 'submitting'
               ? 'Submitting…'
-              : null;
+              : stage.name === 'settling'
+                ? settlingStatus === 'fulfilling'
+                    ? 'Settling on-chain…'
+                    : 'Awaiting operator…'
+                : null;
     const useAmountInput = isBuy && !isLimit;
 
     return (
@@ -603,6 +647,15 @@ export function OrderTicket({
                                 built={(stage as { built: BuiltOrder }).built}
                                 market={market}
                                 busyLabel={busyLabel}
+                                step={
+                                    stage.name === 'signing'
+                                        ? 'sign'
+                                        : stage.name === 'submitting'
+                                          ? 'submit'
+                                          : stage.name === 'settling'
+                                            ? 'settle'
+                                            : 'quote'
+                                }
                                 onConfirm={() => void handleConfirm()}
                                 onCancel={() => setStage({ name: 'input' })}
                             />
@@ -641,12 +694,14 @@ function QuoteStage({
     built,
     market,
     busyLabel,
+    step,
     onConfirm,
     onCancel,
 }: {
     built: BuiltOrder;
     market: PickedMarket;
     busyLabel: string | null;
+    step: ProgressStep;
     onConfirm: () => void;
     onCancel: () => void;
 }) {
@@ -656,6 +711,7 @@ function QuoteStage({
 
     return (
         <div className="space-y-3">
+            <ProgressStepper step={step} />
             <div className={`rounded-md ${theme.tint} px-4 py-3`}>
                 <div className={`text-sm font-semibold ${theme.text}`}>
                     {isBuy ? 'Buy' : 'Sell'} {market.outcome}
@@ -813,6 +869,13 @@ function DoneStage({
                 </div>
                 <div className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
                     {variant === 'failed' ? (
+                        // Show the operator's actual reason when present
+                        // (e.g. "Insufficient escrow balance", "Limitless
+                        // place_order failed: …") — way more useful than
+                        // the generic line, especially for cross-chain
+                        // venue failures where users need to know whether
+                        // it's an escrow, signature, or venue-side issue.
+                        order.error ??
                         'Order did not fill. Funds returned to your escrow.'
                     ) : variant === 'resting' ? (
                         `Limit order placed at ${avgPrice != null ? formatPrice(avgPrice) : '?'}. Cancel it from the open orders panel.`
@@ -878,6 +941,114 @@ function DoneStage({
                 </button>
             </div>
         </div>
+    );
+}
+
+type ProgressStep = 'quote' | 'sign' | 'submit' | 'settle' | 'done';
+
+const PROGRESS_STEPS: { key: ProgressStep; label: string }[] = [
+    { key: 'quote', label: 'Quote' },
+    { key: 'sign', label: 'Sign' },
+    { key: 'submit', label: 'Submit' },
+    { key: 'settle', label: 'Settle' },
+];
+
+/**
+ * Poll `/v0/orders/:id` every second until the server reports a terminal
+ * lifecycle state. `onUpdate` fires after every poll so the UI can render
+ * the real backend phase (`accepted` → `fulfilling` → `fulfilled`/…).
+ * Times out after STATUS_POLL_TIMEOUT_MS to avoid pinning the UI forever
+ * if the operator stalls.
+ */
+async function pollOrderStatus(
+    client: { fetchOrder: (id: string) => Promise<PmxtOrder> },
+    accepted: PmxtOrder,
+    onUpdate: (order: PmxtOrder) => void,
+): Promise<PmxtOrder> {
+    if (!IN_FLIGHT_STATUSES.has(accepted.status) || !accepted.id) {
+        return accepted;
+    }
+    onUpdate(accepted);
+    const started = Date.now();
+    let current = accepted;
+    while (
+        IN_FLIGHT_STATUSES.has(current.status) &&
+        Date.now() - started < STATUS_POLL_TIMEOUT_MS
+    ) {
+        await new Promise((resolve) =>
+            setTimeout(resolve, STATUS_POLL_INTERVAL_MS),
+        );
+        try {
+            current = await client.fetchOrder(accepted.id);
+        } catch {
+            // Transient fetch failure — keep the prior status and try again
+            // until the overall timeout fires.
+            continue;
+        }
+        onUpdate(current);
+    }
+    return current;
+}
+
+/**
+ * Shows where the user is in the build → sign → submit chain. Visible from
+ * the moment the quote arrives so the wallet pop-up and on-chain settle
+ * don't feel like a black box.
+ */
+function ProgressStepper({ step }: { step: ProgressStep }) {
+    const activeIdx = PROGRESS_STEPS.findIndex((s) => s.key === step);
+    return (
+        <ol className="flex items-center gap-1.5" aria-label="Order progress">
+            {PROGRESS_STEPS.map((s, i) => {
+                const done = i < activeIdx || step === 'done';
+                const active = i === activeIdx && step !== 'done';
+                return (
+                    <li
+                        key={s.key}
+                        className="flex flex-1 items-center gap-1.5"
+                        aria-current={active ? 'step' : undefined}
+                    >
+                        <span
+                            className={`flex size-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold ${
+                                done
+                                    ? 'bg-[var(--pmxt-positive,#059669)] text-white'
+                                    : active
+                                      ? 'bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900'
+                                      : 'bg-zinc-200 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-500'
+                            }`}
+                        >
+                            {done ? (
+                                '✓'
+                            ) : active ? (
+                                <SpinnerIcon className="size-2.5" />
+                            ) : (
+                                i + 1
+                            )}
+                        </span>
+                        <span
+                            className={`text-[10px] font-semibold uppercase tracking-wide ${
+                                active
+                                    ? 'text-zinc-900 dark:text-zinc-100'
+                                    : done
+                                      ? 'text-zinc-600 dark:text-zinc-400'
+                                      : 'text-zinc-400 dark:text-zinc-500'
+                            }`}
+                        >
+                            {s.label}
+                        </span>
+                        {i < PROGRESS_STEPS.length - 1 && (
+                            <span
+                                className={`ml-1 h-px flex-1 ${
+                                    done
+                                        ? 'bg-[var(--pmxt-positive,#059669)]'
+                                        : 'bg-zinc-200 dark:bg-zinc-800'
+                                }`}
+                            />
+                        )}
+                    </li>
+                );
+            })}
+        </ol>
     );
 }
 

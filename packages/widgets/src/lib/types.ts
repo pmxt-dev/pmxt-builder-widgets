@@ -330,6 +330,12 @@ export interface PmxtOrder {
     raw?: RawTokenRef | null;
     /** Present on open-order reads from some deployments. */
     market_title?: string | null;
+    /**
+     * Operator-reported failure reason on `status: 'failed'` / `'no_fill'`
+     * orders, surfaced from the latest `task_state_log` row. Drives the
+     * error copy in the order-ticket Done stage.
+     */
+    error?: string | null;
 }
 
 /** Unified `/v0` user trade shape. `amount` is in 6-dec micro-shares. */
