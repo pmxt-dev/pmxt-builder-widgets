@@ -1,6 +1,6 @@
 'use client';
 
-import { useId } from 'react';
+import { useId, useState, useRef } from 'react';
 import { useOHLCV } from '../hooks';
 import { formatPrice } from '../lib/format';
 import { SpinnerIcon, TrendDownIcon, TrendUpIcon } from '../lib/icons';
@@ -31,6 +31,126 @@ function formatCandleDate(timestamp: number): string {
         month: 'short',
         day: 'numeric',
     });
+}
+
+interface ChartCoord {
+    x: number;
+    y: number;
+    close: number;
+    candle: { timestamp: number; close: number };
+}
+
+function formatHoverDate(timestamp: number): string {
+    return new Date(timestamp).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+    });
+}
+
+function ChartBody({
+    gradientId,
+    color,
+    points,
+    coords,
+    height,
+    min,
+    max,
+}: {
+    gradientId: string;
+    color: string;
+    points: string;
+    coords: ChartCoord[];
+    height?: number;
+    min: number;
+    max: number;
+}) {
+    const ref = useRef<HTMLDivElement>(null);
+    const [hover, setHover] = useState<number | null>(null);
+
+    const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
+        const el = ref.current;
+        if (!el || coords.length === 0) return;
+        const rect = el.getBoundingClientRect();
+        const xPct = ((e.clientX - rect.left) / rect.width) * 100;
+        let nearest = 0;
+        let bestDist = Infinity;
+        for (let i = 0; i < coords.length; i++) {
+            const d = Math.abs(coords[i]!.x - xPct);
+            if (d < bestDist) {
+                bestDist = d;
+                nearest = i;
+            }
+        }
+        setHover(nearest);
+    };
+
+    const hovered = hover != null ? coords[hover] : null;
+
+    return (
+        <div
+            ref={ref}
+            className="relative mt-2"
+            onMouseMove={onMove}
+            onMouseLeave={() => setHover(null)}
+        >
+            <svg
+                viewBox="0 0 100 100"
+                preserveAspectRatio="none"
+                className="block w-full"
+                style={height != null ? { height } : { aspectRatio: '5 / 2' }}
+                aria-hidden="true"
+            >
+                <defs>
+                    <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+                        <stop offset="100%" stopColor={color} stopOpacity="0" />
+                    </linearGradient>
+                </defs>
+                <polygon points={`${points} 100,100 0,100`} fill={`url(#${gradientId})`} />
+                <polyline
+                    points={points}
+                    fill="none"
+                    stroke={color}
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    vectorEffect="non-scaling-stroke"
+                />
+                {hovered ? (
+                    <g>
+                        <line
+                            x1={hovered.x}
+                            y1={0}
+                            x2={hovered.x}
+                            y2={100}
+                            stroke="#71717a"
+                            strokeWidth="0.5"
+                            strokeDasharray="1.5,1.5"
+                            vectorEffect="non-scaling-stroke"
+                        />
+                        <circle cx={hovered.x} cy={hovered.y} r="1.2" fill={color} vectorEffect="non-scaling-stroke" />
+                    </g>
+                ) : null}
+            </svg>
+            <span className="pointer-events-none absolute left-1 top-0 font-mono text-[10px] text-zinc-400 dark:text-zinc-500">
+                {formatPrice(max)}
+            </span>
+            <span className="pointer-events-none absolute bottom-0 left-1 font-mono text-[10px] text-zinc-400 dark:text-zinc-500">
+                {formatPrice(min)}
+            </span>
+            {hovered ? (
+                <div
+                    className="pointer-events-none absolute -translate-x-1/2 rounded-md border border-zinc-200 bg-white px-2 py-1 font-mono text-[10px] text-zinc-900 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                    style={{ left: `${hovered.x}%`, top: 0 }}
+                >
+                    <div className="font-semibold">{formatPrice(hovered.close)}</div>
+                    <div className="text-zinc-500 dark:text-zinc-400">{formatHoverDate(hovered.candle.timestamp)}</div>
+                </div>
+            ) : null}
+        </div>
+    );
 }
 
 /** Inline SVG area chart of close prices with a price/change header. */
@@ -97,13 +217,12 @@ export function PriceChart({
     const up = change >= 0;
     const color = up ? '#059669' : '#dc2626';
 
-    const points = closes
-        .map((close, i) => {
-            const x = (i / (closes.length - 1)) * 100;
-            const y = PAD_Y + ((max - close) / range) * (100 - PAD_Y * 2);
-            return `${x.toFixed(2)},${y.toFixed(2)}`;
-        })
-        .join(' ');
+    const coords = closes.map((close, i) => {
+        const x = (i / (closes.length - 1)) * 100;
+        const y = PAD_Y + ((max - close) / range) * (100 - PAD_Y * 2);
+        return { x, y, close, candle: candles[i]! };
+    });
+    const points = coords.map(({ x, y }) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ');
 
     return (
         <section
@@ -126,38 +245,15 @@ export function PriceChart({
                 <span className="text-[11px] text-zinc-500 dark:text-zinc-400">{resolution}</span>
             </div>
 
-            <div className="relative mt-2">
-                <svg
-                    viewBox="0 0 100 100"
-                    preserveAspectRatio="none"
-                    className="block w-full"
-                    style={height != null ? { height } : { aspectRatio: '5 / 2' }}
-                    aria-hidden="true"
-                >
-                    <defs>
-                        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor={color} stopOpacity="0.25" />
-                            <stop offset="100%" stopColor={color} stopOpacity="0" />
-                        </linearGradient>
-                    </defs>
-                    <polygon points={`${points} 100,100 0,100`} fill={`url(#${gradientId})`} />
-                    <polyline
-                        points={points}
-                        fill="none"
-                        stroke={color}
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        vectorEffect="non-scaling-stroke"
-                    />
-                </svg>
-                <span className="pointer-events-none absolute left-1 top-0 font-mono text-[10px] text-zinc-400 dark:text-zinc-500">
-                    {formatPrice(max)}
-                </span>
-                <span className="pointer-events-none absolute bottom-0 left-1 font-mono text-[10px] text-zinc-400 dark:text-zinc-500">
-                    {formatPrice(min)}
-                </span>
-            </div>
+            <ChartBody
+                gradientId={gradientId}
+                color={color}
+                points={points}
+                coords={coords}
+                height={height}
+                min={min}
+                max={max}
+            />
 
             <div className="mt-1 flex items-center justify-between px-1 text-[10px] text-zinc-400 dark:text-zinc-500">
                 <span>{firstCandle ? formatCandleDate(firstCandle.timestamp) : ''}</span>
