@@ -7,9 +7,15 @@ import { CodeBlock } from '../code-block';
 // Pull umbrella stats from the same source as pmxt.dev so the numbers
 // match across surfaces. The widgets repo is open source but small; the
 // PMXT main repo + aggregate downloads badge is what carries the story.
+// All four metrics now come from SVG badges (downloads via pmxt-stats,
+// the rest via shields.io) — keeps us off the GitHub API's 60/hr per-IP
+// unauthenticated rate limit that left stars/forks blank during testing.
 const REPO = 'pmxt-dev/pmxt';
 const DOWNLOADS_BADGE =
     'https://pmxt-dev.github.io/pmxt-stats/badges/total-downloads.svg';
+const STARS_BADGE = `https://img.shields.io/github/stars/${REPO}?style=flat`;
+const FORKS_BADGE = `https://img.shields.io/github/forks/${REPO}?style=flat`;
+const CONTRIBUTORS_BADGE = `https://img.shields.io/github/contributors/${REPO}?style=flat`;
 
 const INSTALL = `npm install pmxt-widgets`;
 
@@ -168,28 +174,16 @@ function useTraction(): TractionState {
                 }
             };
 
-            // One repo fetch covers both stars and forks.
-            const repoFetch = fetch(
-                `https://api.github.com/repos/${REPO}`,
-            ).then((r) => (r.ok ? r.json() : null));
+            // All four metrics scraped from SVG badges — no GitHub API
+            // rate limit to hit.
+            const fetchBadge = (url: string) =>
+                fetch(url).then((r) => (r.ok ? r.text() : null));
 
             const [stars, forks, downloads, contributors] = await Promise.all([
-                safe(repoFetch, (j) => j?.stargazers_count),
-                safe(repoFetch, (j) => j?.forks_count),
-                // Pull from the same downloads badge pmxt.dev parses — keeps
-                // the number consistent across surfaces.
-                safe(
-                    fetch(DOWNLOADS_BADGE).then((r) =>
-                        r.ok ? r.text() : null,
-                    ),
-                    (svg) => parseDownloadsBadge(svg),
-                ),
-                safe(
-                    fetch(
-                        `https://api.github.com/repos/${REPO}/contributors?per_page=100&anon=true`,
-                    ).then((r) => (r.ok ? r.json() : null)),
-                    (j) => (Array.isArray(j) ? j.length : null),
-                ),
+                safe(fetchBadge(STARS_BADGE), parseDownloadsBadge),
+                safe(fetchBadge(FORKS_BADGE), parseDownloadsBadge),
+                safe(fetchBadge(DOWNLOADS_BADGE), parseDownloadsBadge),
+                safe(fetchBadge(CONTRIBUTORS_BADGE), parseDownloadsBadge),
             ]);
             if (!cancelled) setState({ stars, forks, downloads, contributors });
         };
