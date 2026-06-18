@@ -6,12 +6,12 @@ import type { NextRequest } from 'next/server';
  *
  * Only read-only catalog endpoints are forwarded; everything else is a 404.
  *
- * Caching: upstream fetches against the demo key go through Next.js's Data
- * Cache with a 30-min revalidate window. That cache is filesystem-backed
- * and shared across serverless instances, so a hit on one Vercel function
- * primes the cache for every other function. Visitor-supplied keys bypass
- * the cache (no-store) so a builder testing their own quota always sees
- * fresh data.
+ * Caching: every catalog read goes through Next.js's Data Cache with a
+ * 30-min revalidate window. The cached body is identical regardless of
+ * which key authenticated the upstream call — catalog data isn't
+ * user-scoped, the key is just for upstream rate-limit accounting — so
+ * one cache entry serves every visitor (sandbox or live, demo key or
+ * their own) for the same (method, path, query, body) tuple.
  */
 const CATALOG_METHOD_PATTERN =
     /^api\/[a-z0-9_-]+\/(fetchMarkets|fetchMarketsPaginated|fetchMarket|fetchEvents|fetchEventsPaginated|fetchEvent|fetchOrderBook|fetchOHLCV|fetchTrades|fetchMarketMatches|fetchEventMatches|getExecutionPrice)$/;
@@ -53,27 +53,23 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<Respo
         );
     }
 
-    const usingDemoKey = !visitorAuth && Boolean(serverKey);
     const body = request.method === 'POST' ? await request.text() : '';
     const base = process.env.PMXT_API_URL ?? 'https://api.pmxt.dev';
     const url = `${base}/${joined}${request.nextUrl.search}`;
 
+    // Always run through Next's Data Cache — catalog responses don't vary
+    // by which key called upstream, so one entry is correct for everyone.
+    // We deliberately prefer the demo key for the upstream call when present
+    // so cache entries are keyed against a single, stable identity.
     const init: RequestInit & { next?: { revalidate?: number; tags?: string[] } } = {
         method: request.method,
         headers: {
-            Authorization: authorization,
+            Authorization: serverKey ?? authorization,
             'Content-Type': 'application/json',
         },
+        next: { revalidate: REVALIDATE_SECONDS, tags: ['pmxt-catalog'] },
     };
     if (request.method === 'POST') init.body = body;
-
-    // Demo-keyed catalog reads land in Next's Data Cache (filesystem,
-    // cross-instance). Visitor-keyed traffic is always uncached.
-    if (usingDemoKey) {
-        init.next = { revalidate: REVALIDATE_SECONDS, tags: ['pmxt-catalog'] };
-    } else {
-        init.cache = 'no-store';
-    }
 
     try {
         const upstream = await fetch(url, init);
@@ -85,10 +81,8 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<Respo
             status: upstream.status,
             headers: {
                 'Content-Type': contentType,
-                'Cache-Control': usingDemoKey
-                    ? BROWSER_CACHE_HEADER
-                    : 'private, no-store',
-                'X-Pmxt-Cache': usingDemoKey ? 'NEXT' : 'BYPASS',
+                'Cache-Control': BROWSER_CACHE_HEADER,
+                'X-Pmxt-Cache': 'NEXT',
             },
         });
     } catch (error: unknown) {
