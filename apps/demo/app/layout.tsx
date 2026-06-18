@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { Analytics } from '@vercel/analytics/next';
 import { Geist, Geist_Mono } from 'next/font/google';
@@ -19,6 +19,14 @@ export const metadata: Metadata = {
     title: 'PMXT Builder Widgets',
     description:
         'Copy-paste React components for building on prediction markets — search, orderbooks, charts, and a full non-custodial trading flow powered by PMXT.',
+};
+
+// Without this, mobile browsers fall back to a ~980px desktop viewport,
+// and every max-w-* utility clamps content into a narrow off-centre column.
+export const viewport: Viewport = {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 5,
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
