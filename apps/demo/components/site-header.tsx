@@ -6,54 +6,25 @@ import { useSandboxMode } from '../app/providers';
 
 const DISCORD_URL = 'https://discord.gg/Pyn252Pg95';
 
-/** Sandbox ⇄ Live segmented control. Sandbox = $1,000 play money, no
- *  wallet needed. Live needs a builder API key. */
+/** Single chip showing the active mode. Click flips. Hover reveals the
+ *  inverse mode subtly so the visitor can see it's interactive. */
 function SandboxToggle() {
     const { sandbox, setSandbox } = useSandboxMode();
     return (
-        <div
-            role="group"
-            aria-label="Trading mode"
-            className="hidden items-center rounded-md border border-zinc-200 p-0.5 font-mono text-[10px] uppercase tracking-wider sm:flex dark:border-zinc-800"
+        <button
+            type="button"
+            onClick={() => setSandbox(!sandbox)}
+            aria-label={`Trading mode: ${sandbox ? 'sandbox' : 'live'}. Click to switch.`}
+            title={sandbox ? 'Switch to live' : 'Switch to sandbox'}
+            className="group hidden h-8 items-center gap-1.5 rounded-full px-2.5 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 sm:flex dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
         >
-            <button
-                type="button"
-                onClick={() => setSandbox(true)}
-                aria-pressed={sandbox}
-                className={`flex h-6 items-center gap-1.5 rounded-[5px] px-2 transition-colors ${
-                    sandbox
-                        ? 'bg-zinc-950 text-white dark:bg-zinc-50 dark:text-zinc-950'
-                        : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
-                }`}
-            >
-                {sandbox && (
-                    <span
-                        aria-hidden="true"
-                        className="size-1 rounded-full bg-emerald-400"
-                    />
-                )}
-                sandbox
-            </button>
-            <button
-                type="button"
-                onClick={() => setSandbox(false)}
-                aria-pressed={!sandbox}
-                className={`flex h-6 items-center gap-1.5 rounded-[5px] px-2 transition-colors ${
-                    !sandbox
-                        ? 'bg-zinc-950 text-white dark:bg-zinc-50 dark:text-zinc-950'
-                        : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
-                }`}
-            >
-                {!sandbox && (
-                    <span
-                        aria-hidden="true"
-                        className="size-1 rounded-full"
-                        style={{ backgroundColor: '#a85a32' }}
-                    />
-                )}
-                live
-            </button>
-        </div>
+            <span
+                aria-hidden="true"
+                className="size-1.5 rounded-full transition-colors"
+                style={{ backgroundColor: sandbox ? '#10b981' : '#a85a32' }}
+            />
+            {sandbox ? 'sandbox' : 'live'}
+        </button>
     );
 }
 
