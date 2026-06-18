@@ -68,16 +68,21 @@ export function SectionSandbox() {
             </span>
           </div>
 
-          {/* TradingPanel renders its own cards/borders; no double-frame wrapper. */}
-          <div className="w-full min-w-0 [&_*]:min-w-0">
+          {/* Light frame so the placeholder isn't floating in a void.
+              TradingPanel still owns its own inner cards — outer has no
+              padding to avoid the double-frame look. */}
+          <div className="w-full min-w-0 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900 [&_*]:min-w-0">
             {focus ? (
               <TradingPanel
                 key={`${focus.venue}-${focus.outcomeId}`}
                 market={focus.picked}
               />
             ) : (
-              <div className="flex h-[480px] items-center justify-center font-mono text-xs uppercase tracking-wider text-zinc-500">
-                loading a live market&hellip;
+              <div className="flex h-64 items-center justify-center font-mono text-[11px] uppercase tracking-wider text-zinc-400 sm:h-80 lg:h-[480px]">
+                <span className="inline-flex items-center gap-2">
+                  <span className="size-1.5 animate-pulse rounded-full bg-zinc-400" />
+                  loading a live market&hellip;
+                </span>
               </div>
             )}
           </div>
