@@ -36,7 +36,7 @@ export function SectionHero() {
                         MIT · open source on GitHub
                     </a>
                 </div>
-                <h1 className="max-w-4xl text-balance text-4xl font-semibold tracking-tight text-zinc-950 sm:text-5xl md:text-6xl lg:text-7xl dark:text-zinc-50">
+                <h1 className="max-w-4xl text-4xl font-semibold tracking-tight text-zinc-950 sm:text-5xl md:text-6xl lg:text-7xl lg:text-balance dark:text-zinc-50">
                     Your own prediction market.
                     <br />
                     <span className="text-zinc-400 dark:text-zinc-500">

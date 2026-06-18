@@ -143,7 +143,7 @@ function GoLiveButton() {
     return (
         <Link
             href="/go-live"
-            className="hidden h-8 items-center rounded-md bg-zinc-950 px-3 text-xs font-medium text-white transition-colors hover:bg-zinc-800 sm:flex dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200"
+            className="flex h-8 items-center rounded-md bg-zinc-950 px-3 text-xs font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200"
         >
             Go live →
         </Link>
