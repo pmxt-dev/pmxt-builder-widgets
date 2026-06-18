@@ -10,7 +10,7 @@ export function SectionSandbox() {
 
   return (
     <section className="min-h-screen w-full overflow-x-hidden bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-      <div className="mx-auto grid min-h-screen max-w-7xl grid-cols-1 gap-12 px-4 py-20 sm:gap-16 sm:px-6 sm:py-32 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-24">
+      <div className="mx-auto grid min-h-screen max-w-6xl grid-cols-1 gap-12 px-4 py-20 sm:gap-16 sm:px-6 sm:py-32 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-24">
         {/* LEFT — the prompt */}
         <div className="flex min-w-0 flex-col justify-center lg:sticky lg:top-0 lg:h-screen lg:py-32">
           <p
@@ -20,16 +20,16 @@ export function SectionSandbox() {
             &#x21B3; try it
           </p>
 
-          <h2 className="mb-8 text-[2.25rem] leading-[1.05] font-semibold tracking-tight sm:mb-10 sm:text-4xl md:text-5xl lg:text-6xl">
+          <h2 className="mb-4 text-2xl font-semibold tracking-tight sm:mb-6 sm:text-3xl md:text-4xl">
             Take a position.
           </h2>
 
-          <p className="mb-6 max-w-sm text-base leading-relaxed text-zinc-700 dark:text-zinc-300">
+          <p className="mb-6 max-w-2xl text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
             Real market. Real book. Sandbox-routed &mdash; your $1,000 of play
             money, no wallet needed.
           </p>
 
-          <p className="max-w-sm text-base leading-relaxed text-zinc-700 dark:text-zinc-300">
+          <p className="max-w-2xl text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
             The widget on the right is the same one your users would see on day
             one.
           </p>
@@ -87,7 +87,7 @@ export function SectionSandbox() {
             )}
           </div>
 
-          <p className="mt-6 max-w-2xl text-xs leading-relaxed text-zinc-500">
+          <p className="mt-6 text-xs leading-relaxed text-zinc-500">
             When you flip it to live, your users sign with their own wallet.
             PMXT routes the trade and credits the builder fee to your account.
           </p>

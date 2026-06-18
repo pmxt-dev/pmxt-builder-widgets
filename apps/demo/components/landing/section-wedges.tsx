@@ -24,7 +24,7 @@ function WedgeRow({ headline, slug, children }: WedgeRowProps) {
                 className="group grid grid-cols-1 gap-6 py-10 md:grid-cols-12 md:items-center md:gap-10 md:py-12"
             >
                 <div className="flex items-start justify-between gap-4 md:col-span-5 md:block">
-                    <span className="block text-xl font-medium leading-tight tracking-tight transition-colors group-hover:text-[#a85a32] sm:text-2xl md:text-3xl">
+                    <span className="block font-semibold leading-tight tracking-tight text-xl transition-colors group-hover:text-[#a85a32] sm:text-2xl md:text-3xl">
                         {headline}
                     </span>
                     <span
@@ -35,12 +35,12 @@ function WedgeRow({ headline, slug, children }: WedgeRowProps) {
                     </span>
                 </div>
                 <div
-                    className="min-w-0 md:col-span-6"
+                    className="min-w-0 max-w-2xl md:max-w-none md:col-span-6"
                     /* Stop link nav so the visitor can actually use the embedded
                        widget (search, click outcomes) without bouncing away. */
                     onClick={(e) => e.preventDefault()}
                 >
-                    <div className="w-full max-w-md overflow-x-auto">{children}</div>
+                    <div className="w-full overflow-x-auto">{children}</div>
                 </div>
                 <div className="hidden md:col-span-1 md:flex md:justify-end">
                     <span

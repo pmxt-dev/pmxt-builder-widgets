@@ -26,7 +26,7 @@ const HELLO_WORLD = `import { MarketSearch, PmxtProvider } from 'pmxt-widgets';
 export function SectionHero() {
     return (
         <section className="border-b border-zinc-200/70 dark:border-zinc-800/70">
-            <div className="mx-auto max-w-6xl px-4 pb-20 pt-16 sm:px-6 sm:pt-24">
+            <div className="mx-auto max-w-6xl px-4 sm:px-6 py-20 sm:py-32">
                 <div className="mb-6 flex flex-wrap items-center gap-3 font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-400">
                     <a
                         href="https://github.com/pmxt-dev/pmxt-builder-widgets"
@@ -43,13 +43,16 @@ export function SectionHero() {
                         Live by tonight.
                     </span>
                 </h1>
-                <p className="mt-6 max-w-xl text-sm text-zinc-500 dark:text-zinc-400">
+                <p className="mt-6 max-w-2xl text-sm text-zinc-500 dark:text-zinc-400">
                     Your audience trades on your site instead of leaving for
                     Polymarket. You take the spread; we route the orders across
                     every venue worth trading.
                 </p>
 
-                <div className="mt-12 grid items-start gap-6 lg:grid-cols-[1.1fr_1fr]">
+                {/* Below lg the grid stacks; cap its width so the widget +
+                    code blocks share the same right-edge as the paragraph
+                    above instead of stretching to the section's max-w. */}
+                <div className="mt-12 grid max-w-2xl items-start gap-6 lg:max-w-none lg:grid-cols-[1.1fr_1fr]">
                     {/* Live proof. Real widget, real fetch, real outcome. */}
                     <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
                         <div className="mb-3 flex items-center gap-2 text-[10px] font-medium uppercase tracking-wider text-zinc-400">
@@ -82,7 +85,9 @@ export function SectionHero() {
 
                 {/* Soft signals — we just launched, so this is presence, not
                     bragging. Swap the handles below for the real ones. */}
-                <SoftSignals />
+                <div className="max-w-2xl lg:max-w-none">
+                    <SoftSignals />
+                </div>
             </div>
         </section>
     );
@@ -94,7 +99,7 @@ export function SectionHero() {
 function SoftSignals() {
     const stats = useTraction();
     return (
-        <dl className="mt-16 grid grid-cols-2 gap-6 border-t border-zinc-200 pt-8 sm:grid-cols-4 dark:border-zinc-800">
+        <dl className="mt-12 sm:mt-16 grid grid-cols-2 gap-6 border-t border-zinc-200 pt-8 sm:grid-cols-4 dark:border-zinc-800">
             <Stat
                 value={stats.stars}
                 label="github stars"

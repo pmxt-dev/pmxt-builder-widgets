@@ -54,10 +54,10 @@ export function SectionCta() {
                 >
                     ↳ ship it
                 </p>
-                <h2 className="max-w-3xl text-balance text-3xl font-semibold tracking-tight text-zinc-950 sm:text-4xl md:text-5xl dark:text-zinc-50">
+                <h2 className="max-w-3xl text-balance text-2xl font-semibold tracking-tight text-zinc-950 sm:text-3xl md:text-4xl dark:text-zinc-50">
                     Open source. One command.
                 </h2>
-                <p className="mt-4 max-w-xl text-sm text-zinc-500 dark:text-zinc-400">
+                <p className="mt-4 max-w-2xl text-sm text-zinc-500 dark:text-zinc-400">
                     No call, no waitlist.
                 </p>
 

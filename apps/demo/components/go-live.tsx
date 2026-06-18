@@ -62,17 +62,17 @@ export function GoLive() {
             <SiteHeader />
 
             <section className="border-b border-zinc-200/70">
-                <div className="mx-auto max-w-5xl px-4 pb-16 pt-20 sm:px-6 sm:pt-28">
+                <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-32">
                     <p
                         className="mb-6 font-mono text-[11px] uppercase tracking-[0.18em]"
                         style={{ color: '#a85a32' }}
                     >
                         ↳ ship it
                     </p>
-                    <h1 className="max-w-3xl text-balance text-4xl font-semibold tracking-tight text-zinc-950 sm:text-6xl">
+                    <h1 className="max-w-4xl text-balance text-4xl font-semibold tracking-tight text-zinc-950 sm:text-6xl">
                         Go live in three steps.
                     </h1>
-                    <p className="mt-6 max-w-xl text-sm text-zinc-500">
+                    <p className="mt-6 max-w-2xl text-sm text-zinc-500">
                         You&rsquo;ve cloned the repo or installed the package.
                         Now you just need a key and a fee. Should take about
                         five minutes.
@@ -81,7 +81,7 @@ export function GoLive() {
             </section>
 
             <section className="border-b border-zinc-200/70">
-                <ol className="mx-auto max-w-5xl px-4 py-16 sm:px-6">
+                <ol className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-32">
                     {STEPS.map((step, i) => (
                         <StepRow
                             key={step.number}
@@ -94,14 +94,14 @@ export function GoLive() {
 
             {/* Tail — what unlocks once they're live. */}
             <section className="border-b border-zinc-200/70">
-                <div className="mx-auto max-w-5xl px-4 py-20 sm:px-6">
+                <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-32">
                     <p
                         className="mb-4 font-mono text-[11px] uppercase tracking-[0.18em]"
                         style={{ color: '#a85a32' }}
                     >
                         once you&rsquo;re live
                     </p>
-                    <h2 className="max-w-3xl text-2xl font-semibold tracking-tight sm:text-4xl">
+                    <h2 className="max-w-3xl text-2xl font-semibold tracking-tight sm:text-3xl md:text-4xl">
                         Every fill credits your account.
                     </h2>
                     <div className="mt-10 grid gap-px overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-200 sm:grid-cols-3">
@@ -206,7 +206,7 @@ function EnvBlock({ title, code }: { title: string; code: string }) {
             type="button"
             onClick={onCopy}
             aria-label={`Copy ${title}`}
-            className="group flex flex-col rounded-lg border border-zinc-200 bg-white text-left transition-colors hover:border-zinc-300"
+            className="group flex flex-col rounded-2xl border border-zinc-200 bg-white text-left transition-colors hover:border-zinc-300"
         >
             <div className="flex items-center justify-between border-b border-zinc-100 px-3 py-1.5">
                 <span className="font-mono text-[10px] uppercase tracking-wider text-zinc-400">

@@ -183,10 +183,10 @@ function VenueColumn({ entry }: { entry: VenueEntry }) {
 
 export function SectionStatus() {
     return (
-        <section className="relative min-h-screen w-full bg-white px-4 py-24 text-zinc-900 sm:px-6 sm:py-32 dark:bg-zinc-950 dark:text-zinc-100">
-            <div className="mx-auto w-full max-w-6xl">
+        <section className="relative min-h-screen w-full bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+            <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-32">
                 <p
-                    className="text-[10px] uppercase tracking-wider sm:text-xs"
+                    className="font-mono text-[11px] uppercase tracking-[0.18em]"
                     style={{ color: '#a85a32' }}
                 >
                     what&apos;s real · what&apos;s not yet
@@ -195,15 +195,15 @@ export function SectionStatus() {
                     Three venues live. Two more in flight.
                 </h2>
 
-                <div className="mt-12 grid grid-cols-2 gap-x-6 gap-y-10 sm:mt-20 sm:gap-x-8 md:grid-cols-3 lg:grid-cols-5">
+                <div className="mt-10 max-w-2xl grid grid-cols-2 gap-x-6 gap-y-10 sm:mt-12 sm:gap-x-8 md:grid-cols-3 lg:mt-12 lg:max-w-none lg:grid-cols-5">
                     {VENUES.map((entry) => (
                         <VenueColumn key={entry.name} entry={entry} />
                     ))}
                 </div>
 
-                <div className="mt-16 flex flex-wrap items-center gap-2 sm:mt-24 sm:gap-3">
+                <div className="mt-12 flex flex-wrap items-center gap-2 sm:mt-16 sm:gap-3">
                     <span
-                        className="font-mono text-[10px] uppercase tracking-wider"
+                        className="font-mono text-[11px] uppercase tracking-[0.18em]"
                         style={{ color: '#a85a32' }}
                     >
                         ↳ next up
