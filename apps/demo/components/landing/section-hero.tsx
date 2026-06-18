@@ -160,11 +160,15 @@ interface CacheEnvelope {
  *  then refresh from badges at most once per TTL_MS (1 hour). On a
  *  miss/error we keep the cached value instead of regressing to "—". */
 function useTraction(): TractionState {
-    const [state, setState] = useState<TractionState>(() => readCache().state);
+    // Seed with EMPTY so the server and the first client render match;
+    // the cached value is applied in the effect below (post-hydration).
+    const [state, setState] = useState<TractionState>(EMPTY);
 
     useEffect(() => {
         let cancelled = false;
         const cache = readCache();
+        // Surface the cached numbers immediately on the client.
+        if (hasAnyValue(cache.state)) setState(cache.state);
         // Within TTL → trust the cache, skip the network round-trip.
         if (Date.now() - cache.at < TTL_MS && hasAnyValue(cache.state)) return;
 
