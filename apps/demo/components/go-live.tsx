@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { PmxtProvider, WalletPanel } from 'pmxt-widgets';
 import { SiteFooter, SiteHeader } from './site-header';
 
 interface Step {
@@ -54,6 +55,21 @@ const STEPS: Step[] = [
         },
         note: 'Fees are credited to your PMXT balance in USDC.e and withdrawable from the same dashboard.',
     },
+    {
+        number: '04',
+        eyebrow: 'funding',
+        title: 'Give your users a way to deposit.',
+        body: 'Trading real markets needs USDC.e in the PMXT escrow on Polygon. Drop in WalletPanel and your users get a connect → deposit → withdraw flow on your site — no custody, no extra backend.',
+        cta: {
+            label: 'See WalletPanel →',
+            href: '/widgets/wallet-panel',
+        },
+        code: {
+            title: 'app/wallet/page.tsx',
+            lines: "import { WalletPanel } from 'pmxt-widgets';\n\nexport default function Wallet() {\n  return <WalletPanel />;\n}",
+        },
+        note: 'Funds live in the PMXT escrow smart contract. Withdrawals only ever go back to the user’s own wallet.',
+    },
 ];
 
 export function GoLive() {
@@ -71,12 +87,12 @@ export function GoLive() {
                             ↳ ship it
                         </p>
                         <h1 className="max-w-4xl text-balance text-4xl font-semibold tracking-tight text-zinc-950 sm:text-6xl">
-                            Go live in three steps.
+                            Go live in four steps.
                         </h1>
                         <p className="mt-6 text-sm text-zinc-500">
                             You&rsquo;ve cloned the repo or installed the package.
-                            Now you just need a key and a fee. Should take about
-                            five minutes.
+                            Now you just need a key, a fee, and a deposit
+                            surface. Should take about five minutes.
                         </p>
                     </div>
                 </div>
@@ -94,6 +110,43 @@ export function GoLive() {
                                 />
                             ))}
                         </ol>
+                    </div>
+                </div>
+            </section>
+
+            {/* Live preview of the deposit widget from step 04. Nested in its
+                own non-sandbox provider so builders see the real connect/deposit
+                surface instead of the sandbox placeholder. */}
+            <section className="border-b border-zinc-200/70 bg-white">
+                <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-32">
+                    <div className="mx-auto grid max-w-2xl gap-10 lg:max-w-none lg:grid-cols-2 lg:items-center">
+                        <div>
+                            <p
+                                className="mb-4 font-mono text-[11px] uppercase tracking-[0.18em]"
+                                style={{ color: '#a85a32' }}
+                            >
+                                ↳ this is what your users see
+                            </p>
+                            <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl md:text-4xl">
+                                One widget covers deposit, balance, withdraw.
+                            </h2>
+                            <p className="mt-4 max-w-md text-sm leading-relaxed text-zinc-500">
+                                Connect prompts a wallet, deposits approve + send
+                                USDC.e to the PMXT escrow, withdrawals route back
+                                to the same address. Live on Polygon — try it.
+                            </p>
+                        </div>
+                        <div className="mx-auto w-full max-w-md">
+                            <PmxtProvider
+                                config={{
+                                    apiUrl: '/api/pmxt',
+                                    tradeUrl: '/api/trade',
+                                }}
+                                sandbox={false}
+                            >
+                                <WalletPanel showHistory={false} />
+                            </PmxtProvider>
+                        </div>
                     </div>
                 </div>
             </section>
