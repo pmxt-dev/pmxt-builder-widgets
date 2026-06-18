@@ -53,9 +53,11 @@ export function SectionHero() {
                     {/* Below lg the grid stacks; cap its width so the widget +
                         code blocks share the same right-edge as the paragraph
                         above instead of stretching to the section's max-w. */}
-                    <div className="mt-12 grid items-start gap-6 lg:grid-cols-[1.1fr_1fr]">
-                        {/* Live proof. Real widget, real fetch, real outcome. */}
-                        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                    <div className="mt-12 grid items-start gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+                        {/* Live proof. Real widget, real fetch, real outcome.
+                            min-w-0 + child cascade lets MarketSearch's internal
+                            flex shrink instead of pushing past the viewport. */}
+                        <div className="min-w-0 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm [&_*]:min-w-0 dark:border-zinc-800 dark:bg-zinc-900">
                             <div className="mb-3 flex items-center gap-2 text-[10px] font-medium uppercase tracking-wider text-zinc-400">
                                 <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" />
                                 Live · try it
@@ -69,7 +71,7 @@ export function SectionHero() {
                         </div>
 
                         {/* The hinge: the demo you just used, in three lines. */}
-                        <div>
+                        <div className="min-w-0">
                             <div className="mb-2 text-[10px] font-medium uppercase tracking-wider text-zinc-400">
                                 What produced it
                             </div>

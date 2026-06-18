@@ -14,7 +14,7 @@ import { SiteFooter, SiteHeader } from './site-header';
  */
 export function Landing() {
     return (
-        <div className="min-h-screen bg-[#fafafa] text-zinc-950 dark:bg-zinc-950 dark:text-zinc-50">
+        <div className="min-h-screen overflow-x-clip bg-[#fafafa] text-zinc-950 dark:bg-zinc-950 dark:text-zinc-50">
             <SiteHeader />
             <SectionHero />
             <SectionSandbox />
