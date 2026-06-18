@@ -150,42 +150,55 @@ const EMPTY: TractionState = {
     downloads: '—',
 };
 
-/** Lazy ponytail: parallel fetches, individual fallbacks. No SWR / no cache —
- *  the data refreshes once per page load and that's plenty for vanity stats. */
+const CACHE_KEY = 'pmxt.traction.v2';
+const TTL_MS = 60 * 60 * 1000; // 1 hour
+
+interface CacheEnvelope {
+    at: number;
+    state: TractionState;
+}
+
+/** Read the cached numbers immediately so users always see a value,
+ *  then refresh from badges at most once per TTL_MS (1 hour). On a
+ *  miss/error we keep the cached value instead of regressing to "—". */
 function useTraction(): TractionState {
-    const [state, setState] = useState<TractionState>(EMPTY);
+    const [state, setState] = useState<TractionState>(() => readCache().state);
 
     useEffect(() => {
         let cancelled = false;
+        const cache = readCache();
+        // Within TTL → trust the cache, skip the network round-trip.
+        if (Date.now() - cache.at < TTL_MS && hasAnyValue(cache.state)) return;
 
         const grab = async () => {
-            // Pulled values can be a number (format-as-count) or a string
-            // (already-formatted, e.g. badge text like "1.2k"). null = bail.
             const safe = async <T,>(
                 p: Promise<T>,
                 pick: (v: T) => number | string | null | undefined,
+                prev: string,
             ): Promise<string> => {
                 try {
                     const v = pick(await p);
-                    if (v == null) return '—';
+                    if (v == null) return prev;
                     return typeof v === 'number' ? formatCount(v) : v;
                 } catch {
-                    return '—';
+                    return prev;
                 }
             };
 
-            // All four metrics scraped from SVG badges — no GitHub API
-            // rate limit to hit.
             const fetchBadge = (url: string) =>
                 fetch(url).then((r) => (r.ok ? r.text() : null));
 
             const [stars, forks, downloads, contributors] = await Promise.all([
-                safe(fetchBadge(STARS_BADGE), parseDownloadsBadge),
-                safe(fetchBadge(FORKS_BADGE), parseDownloadsBadge),
-                safe(fetchBadge(DOWNLOADS_BADGE), parseDownloadsBadge),
-                safe(fetchBadge(CONTRIBUTORS_BADGE), parseDownloadsBadge),
+                safe(fetchBadge(STARS_BADGE), parseDownloadsBadge, cache.state.stars),
+                safe(fetchBadge(FORKS_BADGE), parseDownloadsBadge, cache.state.forks),
+                safe(fetchBadge(DOWNLOADS_BADGE), parseDownloadsBadge, cache.state.downloads),
+                safe(fetchBadge(CONTRIBUTORS_BADGE), parseDownloadsBadge, cache.state.contributors),
             ]);
-            if (!cancelled) setState({ stars, forks, downloads, contributors });
+            const next = { stars, forks, downloads, contributors };
+            if (!cancelled) {
+                setState(next);
+                writeCache(next);
+            }
         };
 
         grab();
@@ -195,6 +208,47 @@ function useTraction(): TractionState {
     }, []);
 
     return state;
+}
+
+function hasAnyValue(s: TractionState): boolean {
+    return (
+        s.stars !== '—' ||
+        s.forks !== '—' ||
+        s.downloads !== '—' ||
+        s.contributors !== '—'
+    );
+}
+
+function readCache(): CacheEnvelope {
+    const empty: CacheEnvelope = { at: 0, state: EMPTY };
+    if (typeof window === 'undefined') return empty;
+    try {
+        const raw = window.localStorage.getItem(CACHE_KEY);
+        if (!raw) return empty;
+        const parsed = JSON.parse(raw) as Partial<CacheEnvelope>;
+        if (typeof parsed.at !== 'number' || !parsed.state) return empty;
+        return {
+            at: parsed.at,
+            state: {
+                stars: parsed.state.stars ?? EMPTY.stars,
+                forks: parsed.state.forks ?? EMPTY.forks,
+                downloads: parsed.state.downloads ?? EMPTY.downloads,
+                contributors: parsed.state.contributors ?? EMPTY.contributors,
+            },
+        };
+    } catch {
+        return empty;
+    }
+}
+
+function writeCache(state: TractionState): void {
+    if (typeof window === 'undefined') return;
+    try {
+        const env: CacheEnvelope = { at: Date.now(), state };
+        window.localStorage.setItem(CACHE_KEY, JSON.stringify(env));
+    } catch {
+        // localStorage full / disabled — ignore.
+    }
 }
 
 /** Scrape the last <text> from the downloads badge — same trick pmxt.dev uses. */
