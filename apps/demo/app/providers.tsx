@@ -12,6 +12,12 @@ import { PmxtProvider } from 'pmxt-widgets';
 
 const API_KEY_STORAGE = 'pmxt.demo.apiKey';
 
+/** Default key used when the visitor flips to live mode without providing
+ *  their own — so the demo's "live" stays demonstrable out of the box.
+ *  Visitor-supplied keys still take precedence. */
+const DEMO_LIVE_KEY =
+    'pmxt_8d7bf29060df2e9e27763bfe0c8f941443bd3323a71833d62a6e8b29d4a427fc';
+
 interface DemoConfigValue {
     sandbox: boolean;
     setSandbox: (on: boolean) => void;
@@ -57,9 +63,11 @@ export function Providers({ children }: { children: ReactNode }) {
         () => ({
             apiUrl: '/api/pmxt',
             tradeUrl: '/api/trade',
-            apiKey: apiKey || undefined,
+            // Visitor's own key wins; otherwise fall back to the demo key
+            // when live (sandbox runs without any key).
+            apiKey: apiKey || (sandbox ? undefined : DEMO_LIVE_KEY),
         }),
-        [apiKey],
+        [apiKey, sandbox],
     );
 
     const value = useMemo(

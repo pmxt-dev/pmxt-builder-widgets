@@ -2,31 +2,8 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
-import { useSandboxMode } from '../app/providers';
 
 const DISCORD_URL = 'https://discord.gg/Pyn252Pg95';
-
-/** Single chip showing the active mode. Click flips. Hover reveals the
- *  inverse mode subtly so the visitor can see it's interactive. */
-function SandboxToggle() {
-    const { sandbox, setSandbox } = useSandboxMode();
-    return (
-        <button
-            type="button"
-            onClick={() => setSandbox(!sandbox)}
-            aria-label={`Trading mode: ${sandbox ? 'sandbox' : 'live'}. Click to switch.`}
-            title={sandbox ? 'Switch to live' : 'Switch to sandbox'}
-            className="group hidden h-8 items-center gap-1.5 rounded-full px-2.5 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 sm:flex dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-        >
-            <span
-                aria-hidden="true"
-                className="size-1.5 rounded-full transition-colors"
-                style={{ backgroundColor: sandbox ? '#10b981' : '#a85a32' }}
-            />
-            {sandbox ? 'sandbox' : 'live'}
-        </button>
-    );
-}
 
 function DiscordIconLink() {
     return (
@@ -201,8 +178,7 @@ export function SiteHeader() {
                         Docs
                     </a>
                 </nav>
-                <div className="flex items-center justify-self-end gap-1 md:justify-self-end">
-                    <SandboxToggle />
+                <div className="flex items-center justify-self-end gap-1">
                     <DiscordIconLink />
                     <GitHubDropdown />
                     <div className="ms-2">

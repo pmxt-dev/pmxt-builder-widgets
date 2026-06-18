@@ -34,15 +34,12 @@ export function SectionHero() {
         <section className="border-b border-zinc-200/70 dark:border-zinc-800/70">
             <div className="mx-auto max-w-6xl px-4 sm:px-6 py-20 sm:py-32">
                 <div className="mx-auto max-w-2xl lg:max-w-none">
-                    <div className="mb-6 flex flex-wrap items-center gap-3 font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-400">
-                        <a
-                            href="https://github.com/pmxt-dev/pmxt-builder-widgets"
-                            className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 px-2.5 py-0.5 text-zinc-500 transition-colors hover:border-zinc-300 hover:text-[#a85a32] dark:border-zinc-800 dark:hover:border-zinc-700"
-                        >
-                            <span className="size-1 rounded-full bg-[#a85a32]" />
-                            MIT · open source on GitHub
-                        </a>
-                    </div>
+                    <a
+                        href="https://github.com/pmxt-dev/pmxt-builder-widgets"
+                        className="mb-6 inline-block font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-400 transition-colors hover:text-[#a85a32]"
+                    >
+                        MIT · open source on GitHub →
+                    </a>
                     <h1 className="max-w-4xl text-4xl font-semibold tracking-tight text-zinc-950 sm:text-5xl md:text-6xl lg:text-7xl lg:text-balance dark:text-zinc-50">
                         Your own prediction market.
                         <br />
@@ -64,9 +61,8 @@ export function SectionHero() {
                             min-w-0 + child cascade lets MarketSearch's internal
                             flex shrink instead of pushing past the viewport. */}
                         <div className="min-w-0 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm [&_*]:min-w-0 dark:border-zinc-800 dark:bg-zinc-900">
-                            <div className="mb-3 flex items-center gap-2 text-[10px] font-medium uppercase tracking-wider text-zinc-400">
-                                <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" />
-                                Live · click a market
+                            <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-400">
+                                ↳ click a market
                             </div>
                             <TopMarkets
                                 mode="unified"

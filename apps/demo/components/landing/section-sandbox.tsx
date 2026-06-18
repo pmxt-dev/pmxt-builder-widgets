@@ -1,12 +1,14 @@
 'use client';
 
 import { TradingPanel } from 'pmxt-widgets';
+import { useSandboxMode } from '../../app/providers';
 import { useAutoMarketFocus } from '../../lib/use-market-focus';
 
 const SIENNA = '#a85a32';
 
 export function SectionSandbox() {
   const focus = useAutoMarketFocus();
+  const { sandbox, setSandbox } = useSandboxMode();
 
   return (
     <section className="min-h-screen w-full overflow-x-hidden bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
@@ -58,7 +60,19 @@ export function SectionSandbox() {
         {/* RIGHT — the live tradable surface */}
         <div className="flex min-w-0 flex-col justify-center">
           <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500 sm:justify-between">
-            <span>sandbox &middot; $1,000 play money</span>
+            <span>
+              {sandbox
+                ? 'sandbox · $1,000 play money'
+                : 'live · routing real orders'}
+              {' · '}
+              <button
+                type="button"
+                onClick={() => setSandbox(!sandbox)}
+                className="underline underline-offset-4 transition-colors hover:text-[#a85a32]"
+              >
+                {sandbox ? 'switch to live' : 'switch to sandbox'}
+              </button>
+            </span>
             <span className="inline-flex items-center gap-2">
               <span
                 className="inline-block h-1.5 w-1.5 rounded-full"
