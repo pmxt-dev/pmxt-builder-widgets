@@ -2,7 +2,6 @@
 
 import { TradingPanel } from 'pmxt-widgets';
 import { useAutoMarketFocus } from '../../lib/use-market-focus';
-import { ModeSwitchInline } from '../mode-switch';
 
 export function SectionSandbox() {
   const focus = useAutoMarketFocus();
@@ -55,9 +54,8 @@ export function SectionSandbox() {
 
         {/* RIGHT — the live tradable surface */}
         <div className="flex min-w-0 flex-col justify-center">
-          <div className="mb-3 flex items-center justify-between gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
+          <div className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
             <span>↳ trade it</span>
-            <ModeSwitchInline />
           </div>
           {/* Light frame so the placeholder isn't floating in a void.
               TradingPanel still owns its own inner cards — outer has no

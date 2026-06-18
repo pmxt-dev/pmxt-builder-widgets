@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { TopMarkets } from 'pmxt-widgets';
 import { CodeBlock } from '../code-block';
-import { ModeSwitchInline } from '../mode-switch';
 
 // Pull umbrella stats from the same source as pmxt.dev so the numbers
 // match across surfaces. The widgets repo is open source but small; the
@@ -63,9 +62,8 @@ export function SectionHero() {
                             min-w-0 + child cascade lets MarketSearch's internal
                             flex shrink instead of pushing past the viewport. */}
                         <div className="min-w-0 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm [&_*]:min-w-0 dark:border-zinc-800 dark:bg-zinc-900">
-                            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-400">
+                            <div className="mb-3 flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-400">
                                 <span>↳ click a market</span>
-                                <ModeSwitchInline />
                             </div>
                             <TopMarkets
                                 mode="unified"
