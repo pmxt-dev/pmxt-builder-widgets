@@ -1,5 +1,5 @@
-import { Catalog } from '@/components/catalog';
+import { Landing } from '@/components/landing';
 
 export default function Home() {
-    return <Catalog />;
+    return <Landing />;
 }
