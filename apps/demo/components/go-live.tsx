@@ -138,7 +138,7 @@ export function GoLive() {
                                 <span aria-hidden="true">→</span>
                             </Link>
                             <a
-                                href="https://docs.pmxt.dev/builders"
+                                href="https://pmxt.dev/docs/builders"
                                 className="text-zinc-600 underline-offset-4 hover:text-zinc-950 hover:underline"
                             >
                                 Full builder docs

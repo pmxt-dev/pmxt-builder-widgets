@@ -97,7 +97,7 @@ export function SectionCta() {
                         <ActionLink href="/widgets">
                             browse the catalog
                         </ActionLink>
-                        <ActionLink href="https://docs.pmxt.dev" external>
+                        <ActionLink href="https://pmxt.dev/docs" external>
                             read the docs
                         </ActionLink>
                     </ActionColumn>

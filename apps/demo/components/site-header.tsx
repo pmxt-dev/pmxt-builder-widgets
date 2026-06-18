@@ -172,7 +172,7 @@ export function SiteHeader() {
                         Widgets
                     </Link>
                     <a
-                        href="https://docs.pmxt.dev"
+                        href="https://pmxt.dev/docs"
                         className="hover:text-zinc-950 dark:hover:text-zinc-50"
                     >
                         Docs
@@ -204,10 +204,10 @@ export function SiteFooter() {
                         pmxt.dev
                     </a>
                     <a
-                        href="https://docs.pmxt.dev"
+                        href="https://pmxt.dev/docs"
                         className="hover:text-zinc-900 dark:hover:text-zinc-100"
                     >
-                        docs.pmxt.dev
+                        pmxt.dev/docs
                     </a>
                     <a
                         href="https://github.com/pmxt-dev/pmxt-builder-widgets"
