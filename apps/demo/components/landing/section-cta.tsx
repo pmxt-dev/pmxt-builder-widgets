@@ -116,7 +116,7 @@ interface ActionColumnProps {
 
 function ActionColumn({ eyebrow, title, children }: ActionColumnProps) {
     return (
-        <div className="flex flex-col bg-white p-6 dark:bg-zinc-950">
+        <div className="flex min-w-0 flex-col bg-white p-6 [&_*]:min-w-0 dark:bg-zinc-950">
             <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-400">
                 {eyebrow}
             </p>
