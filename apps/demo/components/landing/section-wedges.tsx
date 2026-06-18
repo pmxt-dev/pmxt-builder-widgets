@@ -101,7 +101,9 @@ export function SectionWedges() {
                             <MarketSearch
                                 venues={['polymarket', 'opinion']}
                                 placeholder="bitcoin · ethereum…"
-                                defaultMatched={true}
+                                defaultKind="events"
+                                defaultMatched={false}
+                                showKindToggle={false}
                                 maxResults={3}
                             />
                         </WedgeRow>
