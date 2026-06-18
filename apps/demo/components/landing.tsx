@@ -5,7 +5,6 @@ import { SectionHero } from './landing/section-hero';
 import { SectionSandbox } from './landing/section-sandbox';
 import { SectionStatus } from './landing/section-status';
 import { SectionWedges } from './landing/section-wedges';
-import { ModeSwitch } from './mode-switch';
 import { SiteFooter, SiteHeader } from './site-header';
 
 /**
@@ -23,7 +22,6 @@ export function Landing() {
             <SectionWedges />
             <SectionCta />
             <SiteFooter />
-            <ModeSwitch />
         </div>
     );
 }
