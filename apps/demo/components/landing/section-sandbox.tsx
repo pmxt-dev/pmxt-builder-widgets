@@ -24,8 +24,7 @@ export function SectionSandbox() {
           </h2>
 
           <p className="mb-6 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
-            Real market. Real book. Sandbox-routed &mdash; your $1,000 of play
-            money, no wallet needed.
+            Real market. Real book. Sandbox-routed &mdash; no wallet needed.
           </p>
 
           <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
