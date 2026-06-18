@@ -26,7 +26,7 @@ const HELLO_WORLD = `import { MarketSearch, PmxtProvider } from 'pmxt-widgets';
 export function SectionHero() {
     return (
         <section className="border-b border-zinc-200/70 dark:border-zinc-800/70">
-            <div className="mx-auto max-w-6xl px-6 pb-20 pt-16 sm:pt-24">
+            <div className="mx-auto max-w-6xl px-4 pb-20 pt-16 sm:px-6 sm:pt-24">
                 <div className="mb-6 flex flex-wrap items-center gap-3 font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-400">
                     <a
                         href="https://github.com/pmxt-dev/pmxt-builder-widgets"
@@ -36,7 +36,7 @@ export function SectionHero() {
                         MIT · open source on GitHub
                     </a>
                 </div>
-                <h1 className="max-w-4xl text-balance text-5xl font-semibold tracking-tight text-zinc-950 sm:text-6xl md:text-7xl dark:text-zinc-50">
+                <h1 className="max-w-4xl text-balance text-4xl font-semibold tracking-tight text-zinc-950 sm:text-5xl md:text-6xl lg:text-7xl dark:text-zinc-50">
                     Your own prediction market.
                     <br />
                     <span className="text-zinc-400 dark:text-zinc-500">
@@ -220,7 +220,7 @@ function Stat({ value, label, href }: StatProps) {
             href={href}
             className="group block text-center transition-colors"
         >
-            <dd className="ms-0 font-mono text-3xl font-medium tracking-tight tabular-nums text-zinc-950 transition-colors group-hover:text-[#a85a32] lg:text-4xl dark:text-zinc-50">
+            <dd className="ms-0 font-mono text-2xl font-medium tracking-tight tabular-nums text-zinc-950 transition-colors group-hover:text-[#a85a32] sm:text-3xl lg:text-4xl dark:text-zinc-50">
                 {value}
             </dd>
             <dt className="mt-1.5 text-[13px] text-zinc-500 dark:text-zinc-400">

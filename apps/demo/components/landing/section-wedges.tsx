@@ -21,20 +21,26 @@ function WedgeRow({ headline, slug, children }: WedgeRowProps) {
         <li className="border-t border-zinc-200 dark:border-zinc-800">
             <Link
                 href={`/widgets/${slug}`}
-                className="group grid grid-cols-1 gap-8 py-12 md:grid-cols-12 md:items-center md:gap-10"
+                className="group grid grid-cols-1 gap-6 py-10 md:grid-cols-12 md:items-center md:gap-10 md:py-12"
             >
-                <div className="md:col-span-5">
-                    <span className="block text-2xl font-medium leading-tight tracking-tight transition-colors group-hover:text-[#a85a32] md:text-3xl">
+                <div className="flex items-start justify-between gap-4 md:col-span-5 md:block">
+                    <span className="block text-xl font-medium leading-tight tracking-tight transition-colors group-hover:text-[#a85a32] sm:text-2xl md:text-3xl">
                         {headline}
+                    </span>
+                    <span
+                        className="mt-1 shrink-0 font-mono text-[11px] uppercase tracking-wider md:hidden"
+                        style={{ color: '#a85a32' }}
+                    >
+                        &#x21B3;
                     </span>
                 </div>
                 <div
-                    className="md:col-span-6"
+                    className="min-w-0 md:col-span-6"
                     /* Stop link nav so the visitor can actually use the embedded
                        widget (search, click outcomes) without bouncing away. */
                     onClick={(e) => e.preventDefault()}
                 >
-                    <div className="max-w-md">{children}</div>
+                    <div className="w-full max-w-md overflow-x-auto">{children}</div>
                 </div>
                 <div className="hidden md:col-span-1 md:flex md:justify-end">
                     <span
@@ -65,15 +71,15 @@ function ChartWedge() {
 export function SectionWedges() {
     return (
         <section className="min-h-screen w-full bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-            <div className="mx-auto flex min-h-screen max-w-6xl flex-col justify-center px-6 py-32">
+            <div className="mx-auto flex min-h-screen max-w-6xl flex-col justify-center px-4 py-20 sm:px-6 md:py-32">
                 <p
-                    className="mb-8 font-mono text-xs uppercase tracking-wider"
+                    className="mb-6 font-mono text-xs uppercase tracking-wider md:mb-8"
                     style={{ color: '#a85a32' }}
                 >
                     built &middot; or yours to build
                 </p>
 
-                <h2 className="mb-16 max-w-3xl text-3xl font-semibold tracking-tight md:text-4xl">
+                <h2 className="mb-10 max-w-3xl text-2xl font-semibold tracking-tight sm:text-3xl md:mb-16 md:text-4xl">
                     There&rsquo;s an opening. You could take it.
                 </h2>
 

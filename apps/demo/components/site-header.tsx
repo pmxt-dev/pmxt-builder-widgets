@@ -106,7 +106,7 @@ function GitHubDropdown() {
             {open && (
                 <div
                     role="menu"
-                    className="absolute right-0 top-full z-50 mt-2 w-72 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900"
+                    className="absolute right-0 top-full z-50 mt-2 w-[min(18rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900"
                 >
                     <p className="px-4 pb-1 pt-3 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-400">
                         Source on GitHub
@@ -154,7 +154,7 @@ function GoLiveButton() {
 export function SiteHeader() {
     return (
         <header className="sticky top-0 z-50 border-b border-zinc-200 bg-[#fafafa]/85 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/85">
-            <div className="mx-auto grid h-14 max-w-6xl grid-cols-3 items-center gap-4 px-6">
+            <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 md:grid md:grid-cols-3">
                 <Link
                     href="/"
                     className="justify-self-start text-sm font-semibold text-zinc-950 dark:text-zinc-50"
@@ -194,7 +194,7 @@ export function SiteHeader() {
 export function SiteFooter() {
     return (
         <footer className="border-t border-zinc-200 dark:border-zinc-800">
-            <div className="mx-auto flex max-w-6xl flex-col gap-3 px-6 py-10 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-10 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between sm:px-6">
                 <span>Built for the PMXT Builders Programme</span>
                 <div className="flex items-center gap-5">
                     <a

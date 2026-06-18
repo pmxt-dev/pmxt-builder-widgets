@@ -9,10 +9,10 @@ export function SectionSandbox() {
   const focus = useAutoMarketFocus();
 
   return (
-    <section className="min-h-screen w-full bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-      <div className="mx-auto grid min-h-screen max-w-7xl grid-cols-1 gap-16 px-6 py-32 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-24">
+    <section className="min-h-screen w-full overflow-x-hidden bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+      <div className="mx-auto grid min-h-screen max-w-7xl grid-cols-1 gap-12 px-4 py-20 sm:gap-16 sm:px-6 sm:py-32 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-24">
         {/* LEFT — the prompt */}
-        <div className="flex flex-col justify-center lg:sticky lg:top-0 lg:h-screen lg:py-32">
+        <div className="flex min-w-0 flex-col justify-center lg:sticky lg:top-0 lg:h-screen lg:py-32">
           <p
             className="mb-8 font-mono text-xs uppercase tracking-[0.18em]"
             style={{ color: SIENNA }}
@@ -20,7 +20,7 @@ export function SectionSandbox() {
             &#x21B3; try it
           </p>
 
-          <h2 className="mb-10 text-4xl font-semibold tracking-tight md:text-5xl lg:text-6xl">
+          <h2 className="mb-8 text-[2.25rem] leading-[1.05] font-semibold tracking-tight sm:mb-10 sm:text-4xl md:text-5xl lg:text-6xl">
             Take a position.
           </h2>
 
@@ -56,7 +56,7 @@ export function SectionSandbox() {
         </div>
 
         {/* RIGHT — the live tradable surface */}
-        <div className="flex flex-col justify-center">
+        <div className="flex min-w-0 flex-col justify-center">
           <div className="mb-3 flex items-center justify-between font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
             <span>sandbox &middot; $1,000 play money</span>
             <span className="inline-flex items-center gap-2">
@@ -68,7 +68,7 @@ export function SectionSandbox() {
             </span>
           </div>
 
-          <div className="rounded-lg border border-zinc-200 bg-white p-2 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="w-full max-w-full min-w-0 overflow-hidden rounded-lg border border-zinc-200 bg-white p-2 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 [&_*]:min-w-0">
             {focus ? (
               <TradingPanel
                 key={`${focus.venue}-${focus.outcomeId}`}

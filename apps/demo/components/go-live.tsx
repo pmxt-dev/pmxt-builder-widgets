@@ -62,14 +62,14 @@ export function GoLive() {
             <SiteHeader />
 
             <section className="border-b border-zinc-200/70">
-                <div className="mx-auto max-w-5xl px-6 pb-16 pt-20 sm:pt-28">
+                <div className="mx-auto max-w-5xl px-4 pb-16 pt-20 sm:px-6 sm:pt-28">
                     <p
                         className="mb-6 font-mono text-[11px] uppercase tracking-[0.18em]"
                         style={{ color: '#a85a32' }}
                     >
                         ↳ ship it
                     </p>
-                    <h1 className="max-w-3xl text-balance text-5xl font-semibold tracking-tight text-zinc-950 sm:text-6xl">
+                    <h1 className="max-w-3xl text-balance text-4xl font-semibold tracking-tight text-zinc-950 sm:text-6xl">
                         Go live in three steps.
                     </h1>
                     <p className="mt-6 max-w-xl text-sm text-zinc-500">
@@ -81,7 +81,7 @@ export function GoLive() {
             </section>
 
             <section className="border-b border-zinc-200/70">
-                <ol className="mx-auto max-w-5xl px-6 py-16">
+                <ol className="mx-auto max-w-5xl px-4 py-16 sm:px-6">
                     {STEPS.map((step, i) => (
                         <StepRow
                             key={step.number}
@@ -94,14 +94,14 @@ export function GoLive() {
 
             {/* Tail — what unlocks once they're live. */}
             <section className="border-b border-zinc-200/70">
-                <div className="mx-auto max-w-5xl px-6 py-20">
+                <div className="mx-auto max-w-5xl px-4 py-20 sm:px-6">
                     <p
                         className="mb-4 font-mono text-[11px] uppercase tracking-[0.18em]"
                         style={{ color: '#a85a32' }}
                     >
                         once you&rsquo;re live
                     </p>
-                    <h2 className="max-w-3xl text-3xl font-semibold tracking-tight sm:text-4xl">
+                    <h2 className="max-w-3xl text-2xl font-semibold tracking-tight sm:text-4xl">
                         Every fill credits your account.
                     </h2>
                     <div className="mt-10 grid gap-px overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-200 sm:grid-cols-3">
@@ -125,7 +125,7 @@ export function GoLive() {
                     <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
                         <Link
                             href="/widgets"
-                            className="inline-flex items-center gap-1.5 rounded-full bg-zinc-950 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
+                            className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-zinc-950 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
                         >
                             Back to the widgets
                             <span aria-hidden="true">→</span>
@@ -152,7 +152,7 @@ function StepRow({ step, last }: { step: Step; last: boolean }) {
                 last ? '' : 'border-b border-zinc-200'
             }`}
         >
-            <div className="md:col-span-1">
+            <div className="hidden md:col-span-1 md:block">
                 <span className="block font-mono text-xs uppercase tracking-[0.18em] text-zinc-400">
                     {step.number}
                 </span>
@@ -162,6 +162,7 @@ function StepRow({ step, last }: { step: Step; last: boolean }) {
                     className="mb-2 font-mono text-[11px] uppercase tracking-[0.18em]"
                     style={{ color: '#a85a32' }}
                 >
+                    <span className="text-zinc-400 md:hidden">{step.number} · </span>
                     {step.eyebrow}
                 </p>
                 <h2 className="text-2xl font-semibold tracking-tight text-zinc-950 md:text-3xl">
@@ -182,7 +183,7 @@ function StepRow({ step, last }: { step: Step; last: boolean }) {
                     href={step.cta.href}
                     target={step.cta.external ? '_blank' : undefined}
                     rel={step.cta.external ? 'noopener noreferrer' : undefined}
-                    className="inline-flex w-fit items-center gap-1.5 rounded-md bg-zinc-950 px-3.5 py-2 text-xs font-medium text-white transition-colors hover:bg-zinc-800"
+                    className="inline-flex min-h-10 w-fit items-center gap-1.5 rounded-md bg-zinc-950 px-4 py-2.5 text-xs font-medium text-white transition-colors hover:bg-zinc-800"
                 >
                     {step.cta.label}
                 </a>
@@ -222,7 +223,7 @@ function EnvBlock({ title, code }: { title: string; code: string }) {
                     {copied ? 'copied ✓' : 'copy'}
                 </span>
             </div>
-            <code className="px-3 py-2.5 font-mono text-xs text-zinc-900">
+            <code className="block overflow-x-auto whitespace-pre px-3 py-2.5 font-mono text-xs text-zinc-900">
                 {code}
             </code>
         </button>

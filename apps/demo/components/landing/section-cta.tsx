@@ -25,7 +25,7 @@ function CopyChip({ text, label }: CopyChipProps) {
             type="button"
             onClick={onCopy}
             aria-label={`Copy ${label}`}
-            className="group flex w-full items-center justify-between gap-3 rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-left font-mono text-xs text-zinc-900 transition-colors hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:border-zinc-700"
+            className="group flex w-full items-center justify-between gap-3 rounded-lg border border-zinc-200 bg-white px-3.5 py-3 text-left font-mono text-xs text-zinc-900 transition-colors hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:border-zinc-700"
         >
             <span className="truncate">
                 {copied ? 'copied ↵' : text}
@@ -47,14 +47,14 @@ function CopyChip({ text, label }: CopyChipProps) {
 export function SectionCta() {
     return (
         <section className="border-t border-zinc-200 dark:border-zinc-800">
-            <div className="mx-auto max-w-6xl px-6 py-32">
+            <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-32">
                 <p
                     className="mb-4 font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-400"
                     style={{ color: '#a85a32' }}
                 >
                     ↳ ship it
                 </p>
-                <h2 className="max-w-3xl text-balance text-4xl font-semibold tracking-tight text-zinc-950 sm:text-5xl dark:text-zinc-50">
+                <h2 className="max-w-3xl text-balance text-3xl font-semibold tracking-tight text-zinc-950 sm:text-4xl md:text-5xl dark:text-zinc-50">
                     Open source. One command.
                 </h2>
                 <p className="mt-4 max-w-xl text-sm text-zinc-500 dark:text-zinc-400">
@@ -62,7 +62,7 @@ export function SectionCta() {
                 </p>
 
                 {/* Three action columns. Title does the talking; body cut. */}
-                <div className="mt-12 grid gap-px overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-200 dark:border-zinc-800 dark:bg-zinc-800 md:grid-cols-3">
+                <div className="mt-10 grid gap-px overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-200 sm:mt-12 dark:border-zinc-800 dark:bg-zinc-800 md:grid-cols-3">
                     <ActionColumn
                         eyebrow="01 · install"
                         title="Drop into an existing app"
@@ -134,7 +134,7 @@ interface ActionLinkProps {
 
 function ActionLink({ href, external, children }: ActionLinkProps) {
     const className =
-        'group inline-flex w-full items-center justify-between gap-2 rounded-lg border border-transparent px-3.5 py-2.5 text-xs font-medium text-zinc-700 transition-colors hover:border-zinc-200 hover:text-[#a85a32] dark:text-zinc-300 dark:hover:border-zinc-800';
+        'group inline-flex w-full items-center justify-between gap-2 rounded-lg border border-transparent px-3.5 py-3 text-xs font-medium text-zinc-700 transition-colors hover:border-zinc-200 hover:text-[#a85a32] dark:text-zinc-300 dark:hover:border-zinc-800';
     const arrow = (
         <span
             aria-hidden="true"
