@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { MarketSearch } from 'pmxt-widgets';
+import { TopMarkets } from 'pmxt-widgets';
 import { CodeBlock } from '../code-block';
 
 // Pull umbrella stats from the same source as pmxt.dev so the numbers
@@ -13,10 +13,10 @@ const DOWNLOADS_BADGE =
 
 const INSTALL = `npm install pmxt-widgets`;
 
-const HELLO_WORLD = `import { MarketSearch, PmxtProvider } from 'pmxt-widgets';
+const HELLO_WORLD = `import { TopMarkets, PmxtProvider } from 'pmxt-widgets';
 
 <PmxtProvider config={{ apiUrl: '/api/pmxt' }}>
-  <MarketSearch venues={['polymarket', 'opinion', 'limitless']} />
+  <TopMarkets venues={['polymarket', 'opinion', 'limitless']} />
 </PmxtProvider>`;
 
 /**
@@ -60,13 +60,17 @@ export function SectionHero() {
                         <div className="min-w-0 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm [&_*]:min-w-0 dark:border-zinc-800 dark:bg-zinc-900">
                             <div className="mb-3 flex items-center gap-2 text-[10px] font-medium uppercase tracking-wider text-zinc-400">
                                 <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" />
-                                Live · try it
+                                Live · click a market
                             </div>
-                            <MarketSearch
-                                venues={['polymarket', 'opinion', 'limitless']}
-                                defaultMatched={true}
-                                placeholder="fed rate · world cup · taylor swift…"
-                                maxResults={6}
+                            <TopMarkets
+                                mode="unified"
+                                venues={[
+                                    'polymarket',
+                                    'opinion',
+                                    'limitless',
+                                ]}
+                                sortBy="volume24h"
+                                limit={3}
                             />
                         </div>
 
