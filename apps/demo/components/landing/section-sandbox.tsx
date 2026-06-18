@@ -57,7 +57,7 @@ export function SectionSandbox() {
 
         {/* RIGHT — the live tradable surface */}
         <div className="flex min-w-0 flex-col justify-center">
-          <div className="mb-3 flex items-center justify-between font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
+          <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500 sm:justify-between">
             <span>sandbox &middot; $1,000 play money</span>
             <span className="inline-flex items-center gap-2">
               <span
@@ -68,7 +68,8 @@ export function SectionSandbox() {
             </span>
           </div>
 
-          <div className="w-full max-w-full min-w-0 overflow-hidden rounded-lg border border-zinc-200 bg-white p-2 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 [&_*]:min-w-0">
+          {/* TradingPanel renders its own cards/borders; no double-frame wrapper. */}
+          <div className="w-full min-w-0 [&_*]:min-w-0">
             {focus ? (
               <TradingPanel
                 key={`${focus.venue}-${focus.outcomeId}`}
