@@ -153,7 +153,7 @@ export function MatchedMarketRow({
                     : null;
             })
             .filter((l): l is NonNullable<typeof l> => l !== null)
-            .reduce<Record<string, { market: PmxtMarket; outcome: PmxtOutcome; tradable: boolean }>>((acc, leg) => {
+            .reduce<Record<string, { market: PmxtMarket & { sourceExchange: CatalogVenue }; outcome: PmxtOutcome; tradable: boolean }>>((acc, leg) => {
                 const v = leg.market.sourceExchange;
                 const prev = acc[v];
                 if (!prev || (leg.market.volume24h ?? 0) > (prev.market.volume24h ?? 0)) acc[v] = leg;
