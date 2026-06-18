@@ -35,7 +35,7 @@ function WedgeRow({ headline, slug, children }: WedgeRowProps) {
                     </span>
                 </div>
                 <div
-                    className="min-w-0 max-w-2xl md:max-w-none md:col-span-6"
+                    className="min-w-0 md:col-span-6"
                     /* Stop link nav so the visitor can actually use the embedded
                        widget (search, click outcomes) without bouncing away. */
                     onClick={(e) => e.preventDefault()}
@@ -72,53 +72,55 @@ export function SectionWedges() {
     return (
         <section className="min-h-screen w-full bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
             <div className="mx-auto flex min-h-screen max-w-6xl flex-col justify-center px-4 py-20 sm:px-6 md:py-32">
-                <p
-                    className="mb-6 font-mono text-xs uppercase tracking-wider md:mb-8"
-                    style={{ color: '#a85a32' }}
-                >
-                    built &middot; or yours to build
-                </p>
-
-                <h2 className="mb-10 max-w-3xl text-2xl font-semibold tracking-tight sm:text-3xl md:mb-16 md:text-4xl">
-                    There&rsquo;s an opening. You could take it.
-                </h2>
-
-                <ul className="border-b border-zinc-200 dark:border-zinc-800">
-                    <WedgeRow
-                        headline="Every match preview, a market."
-                        slug="matched-markets"
+                <div className="mx-auto max-w-2xl lg:max-w-none">
+                    <p
+                        className="mb-6 font-mono text-xs uppercase tracking-wider md:mb-8"
+                        style={{ color: '#a85a32' }}
                     >
-                        {/* No query — picks whatever cross-venue match is hot
-                            right now. Avoids stale empty-state on niche terms. */}
-                        <MatchedMarkets limit={1} />
-                    </WedgeRow>
+                        built &middot; or yours to build
+                    </p>
 
-                    <WedgeRow
-                        headline="Every analyst call, a market."
-                        slug="market-search"
-                    >
-                        <MarketSearch
-                            venues={['polymarket', 'opinion']}
-                            placeholder="bitcoin · ethereum…"
-                            defaultMatched={true}
-                            maxResults={3}
-                        />
-                    </WedgeRow>
+                    <h2 className="mb-10 max-w-3xl text-2xl font-semibold tracking-tight sm:text-3xl md:mb-16 md:text-4xl">
+                        There&rsquo;s an opening. You could take it.
+                    </h2>
 
-                    <WedgeRow
-                        headline="Every newsletter issue, a market."
-                        slug="price-chart"
-                    >
-                        <ChartWedge />
-                    </WedgeRow>
+                    <ul className="border-b border-zinc-200 dark:border-zinc-800">
+                        <WedgeRow
+                            headline="Every match preview, a market."
+                            slug="matched-markets"
+                        >
+                            {/* No query — picks whatever cross-venue match is hot
+                                right now. Avoids stale empty-state on niche terms. */}
+                            <MatchedMarkets limit={1} />
+                        </WedgeRow>
 
-                    <WedgeRow
-                        headline="Every niche community, its own venue."
-                        slug="top-markets"
-                    >
-                        <TopMarkets mode="unified" limit={2} />
-                    </WedgeRow>
-                </ul>
+                        <WedgeRow
+                            headline="Every analyst call, a market."
+                            slug="market-search"
+                        >
+                            <MarketSearch
+                                venues={['polymarket', 'opinion']}
+                                placeholder="bitcoin · ethereum…"
+                                defaultMatched={true}
+                                maxResults={3}
+                            />
+                        </WedgeRow>
+
+                        <WedgeRow
+                            headline="Every newsletter issue, a market."
+                            slug="price-chart"
+                        >
+                            <ChartWedge />
+                        </WedgeRow>
+
+                        <WedgeRow
+                            headline="Every niche community, its own venue."
+                            slug="top-markets"
+                        >
+                            <TopMarkets mode="unified" limit={2} />
+                        </WedgeRow>
+                    </ul>
+                </div>
             </div>
         </section>
     );

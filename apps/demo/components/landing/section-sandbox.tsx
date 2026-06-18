@@ -12,7 +12,7 @@ export function SectionSandbox() {
     <section className="min-h-screen w-full overflow-x-hidden bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <div className="mx-auto grid min-h-screen max-w-6xl grid-cols-1 gap-12 px-4 py-20 sm:gap-16 sm:px-6 sm:py-32 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-24">
         {/* LEFT — the prompt */}
-        <div className="flex min-w-0 flex-col justify-center lg:sticky lg:top-0 lg:h-screen lg:py-32">
+        <div className="mx-auto flex w-full max-w-2xl flex-col justify-center lg:max-w-none lg:sticky lg:top-0 lg:h-screen lg:py-32">
           <p
             className="mb-8 font-mono text-xs uppercase tracking-[0.18em]"
             style={{ color: SIENNA }}
@@ -24,12 +24,12 @@ export function SectionSandbox() {
             Take a position.
           </h2>
 
-          <p className="mb-6 max-w-2xl text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+          <p className="mb-6 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
             Real market. Real book. Sandbox-routed &mdash; your $1,000 of play
             money, no wallet needed.
           </p>
 
-          <p className="max-w-2xl text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+          <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
             The widget on the right is the same one your users would see on day
             one.
           </p>

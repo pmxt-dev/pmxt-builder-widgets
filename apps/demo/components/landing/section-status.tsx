@@ -185,37 +185,39 @@ export function SectionStatus() {
     return (
         <section className="relative min-h-screen w-full bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
             <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-32">
-                <p
-                    className="font-mono text-[11px] uppercase tracking-[0.18em]"
-                    style={{ color: '#a85a32' }}
-                >
-                    what&apos;s real · what&apos;s not yet
-                </p>
-                <h2 className="mt-6 max-w-3xl text-2xl font-semibold tracking-tight sm:text-3xl md:text-4xl">
-                    Three venues live. Two more in flight.
-                </h2>
-
-                <div className="mt-10 max-w-2xl grid grid-cols-2 gap-x-6 gap-y-10 sm:mt-12 sm:gap-x-8 md:grid-cols-3 lg:mt-12 lg:max-w-none lg:grid-cols-5">
-                    {VENUES.map((entry) => (
-                        <VenueColumn key={entry.name} entry={entry} />
-                    ))}
-                </div>
-
-                <div className="mt-12 flex flex-wrap items-center gap-2 sm:mt-16 sm:gap-3">
-                    <span
+                <div className="mx-auto max-w-2xl lg:max-w-none">
+                    <p
                         className="font-mono text-[11px] uppercase tracking-[0.18em]"
                         style={{ color: '#a85a32' }}
                     >
-                        ↳ next up
-                    </span>
-                    {NEXT_UP.map((label) => (
+                        what&apos;s real · what&apos;s not yet
+                    </p>
+                    <h2 className="mt-6 max-w-3xl text-2xl font-semibold tracking-tight sm:text-3xl md:text-4xl">
+                        Three venues live. Two more in flight.
+                    </h2>
+
+                    <div className="mt-10 grid grid-cols-2 gap-x-6 gap-y-10 sm:mt-12 sm:gap-x-8 md:grid-cols-3 lg:mt-12 lg:grid-cols-5">
+                        {VENUES.map((entry) => (
+                            <VenueColumn key={entry.name} entry={entry} />
+                        ))}
+                    </div>
+
+                    <div className="mt-12 flex flex-wrap items-center gap-2 sm:mt-16 sm:gap-3">
                         <span
-                            key={label}
-                            className="border border-zinc-300 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-zinc-500 dark:border-zinc-700 dark:text-zinc-500"
+                            className="font-mono text-[11px] uppercase tracking-[0.18em]"
+                            style={{ color: '#a85a32' }}
                         >
-                            {label}
+                            ↳ next up
                         </span>
-                    ))}
+                        {NEXT_UP.map((label) => (
+                            <span
+                                key={label}
+                                className="border border-zinc-300 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-zinc-500 dark:border-zinc-700 dark:text-zinc-500"
+                            >
+                                {label}
+                            </span>
+                        ))}
+                    </div>
                 </div>
             </div>
         </section>

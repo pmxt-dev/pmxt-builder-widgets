@@ -48,21 +48,22 @@ export function SectionCta() {
     return (
         <section className="border-t border-zinc-200 dark:border-zinc-800">
             <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-32">
-                <p
-                    className="mb-4 font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-400"
-                    style={{ color: '#a85a32' }}
-                >
-                    ↳ ship it
-                </p>
-                <h2 className="max-w-3xl text-balance text-2xl font-semibold tracking-tight text-zinc-950 sm:text-3xl md:text-4xl dark:text-zinc-50">
-                    Open source. One command.
-                </h2>
-                <p className="mt-4 max-w-2xl text-sm text-zinc-500 dark:text-zinc-400">
-                    No call, no waitlist.
-                </p>
+                <div className="mx-auto max-w-2xl lg:max-w-none">
+                    <p
+                        className="mb-4 font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-400"
+                        style={{ color: '#a85a32' }}
+                    >
+                        ↳ ship it
+                    </p>
+                    <h2 className="max-w-3xl text-balance text-2xl font-semibold tracking-tight text-zinc-950 sm:text-3xl md:text-4xl dark:text-zinc-50">
+                        Open source. One command.
+                    </h2>
+                    <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
+                        No call, no waitlist.
+                    </p>
 
-                {/* Three action columns. Title does the talking; body cut. */}
-                <div className="mt-10 grid gap-px overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-200 sm:mt-12 dark:border-zinc-800 dark:bg-zinc-800 md:grid-cols-3">
+                    {/* Three action columns. Title does the talking; body cut. */}
+                    <div className="mt-10 grid gap-px overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-200 sm:mt-12 dark:border-zinc-800 dark:bg-zinc-800 md:grid-cols-3">
                     <ActionColumn
                         eyebrow="01 · install"
                         title="Drop into an existing app"
@@ -100,6 +101,7 @@ export function SectionCta() {
                             read the docs
                         </ActionLink>
                     </ActionColumn>
+                    </div>
                 </div>
             </div>
         </section>

@@ -27,65 +27,65 @@ export function SectionHero() {
     return (
         <section className="border-b border-zinc-200/70 dark:border-zinc-800/70">
             <div className="mx-auto max-w-6xl px-4 sm:px-6 py-20 sm:py-32">
-                <div className="mb-6 flex flex-wrap items-center gap-3 font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-400">
-                    <a
-                        href="https://github.com/pmxt-dev/pmxt-builder-widgets"
-                        className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 px-2.5 py-0.5 text-zinc-500 transition-colors hover:border-zinc-300 hover:text-[#a85a32] dark:border-zinc-800 dark:hover:border-zinc-700"
-                    >
-                        <span className="size-1 rounded-full bg-[#a85a32]" />
-                        MIT · open source on GitHub
-                    </a>
-                </div>
-                <h1 className="max-w-4xl text-4xl font-semibold tracking-tight text-zinc-950 sm:text-5xl md:text-6xl lg:text-7xl lg:text-balance dark:text-zinc-50">
-                    Your own prediction market.
-                    <br />
-                    <span className="text-zinc-400 dark:text-zinc-500">
-                        Live by tonight.
-                    </span>
-                </h1>
-                <p className="mt-6 max-w-2xl text-sm text-zinc-500 dark:text-zinc-400">
-                    Your audience trades on your site instead of leaving for
-                    Polymarket. You take the spread; we route the orders across
-                    every venue worth trading.
-                </p>
+                <div className="mx-auto max-w-2xl lg:max-w-none">
+                    <div className="mb-6 flex flex-wrap items-center gap-3 font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-400">
+                        <a
+                            href="https://github.com/pmxt-dev/pmxt-builder-widgets"
+                            className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 px-2.5 py-0.5 text-zinc-500 transition-colors hover:border-zinc-300 hover:text-[#a85a32] dark:border-zinc-800 dark:hover:border-zinc-700"
+                        >
+                            <span className="size-1 rounded-full bg-[#a85a32]" />
+                            MIT · open source on GitHub
+                        </a>
+                    </div>
+                    <h1 className="max-w-4xl text-4xl font-semibold tracking-tight text-zinc-950 sm:text-5xl md:text-6xl lg:text-7xl lg:text-balance dark:text-zinc-50">
+                        Your own prediction market.
+                        <br />
+                        <span className="text-zinc-400 dark:text-zinc-500">
+                            Live by tonight.
+                        </span>
+                    </h1>
+                    <p className="mt-6 max-w-2xl text-sm text-zinc-500 dark:text-zinc-400">
+                        Your audience trades on your site instead of leaving for
+                        Polymarket. You take the spread; we route the orders across
+                        every venue worth trading.
+                    </p>
 
-                {/* Below lg the grid stacks; cap its width so the widget +
-                    code blocks share the same right-edge as the paragraph
-                    above instead of stretching to the section's max-w. */}
-                <div className="mt-12 grid max-w-2xl items-start gap-6 lg:max-w-none lg:grid-cols-[1.1fr_1fr]">
-                    {/* Live proof. Real widget, real fetch, real outcome. */}
-                    <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-                        <div className="mb-3 flex items-center gap-2 text-[10px] font-medium uppercase tracking-wider text-zinc-400">
-                            <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" />
-                            Live · try it
+                    {/* Below lg the grid stacks; cap its width so the widget +
+                        code blocks share the same right-edge as the paragraph
+                        above instead of stretching to the section's max-w. */}
+                    <div className="mt-12 grid items-start gap-6 lg:grid-cols-[1.1fr_1fr]">
+                        {/* Live proof. Real widget, real fetch, real outcome. */}
+                        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                            <div className="mb-3 flex items-center gap-2 text-[10px] font-medium uppercase tracking-wider text-zinc-400">
+                                <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" />
+                                Live · try it
+                            </div>
+                            <MarketSearch
+                                venues={['polymarket', 'opinion', 'limitless']}
+                                defaultMatched={true}
+                                placeholder="fed rate · world cup · taylor swift…"
+                                maxResults={6}
+                            />
                         </div>
-                        <MarketSearch
-                            venues={['polymarket', 'opinion', 'limitless']}
-                            defaultMatched={true}
-                            placeholder="fed rate · world cup · taylor swift…"
-                            maxResults={6}
-                        />
+
+                        {/* The hinge: the demo you just used, in three lines. */}
+                        <div>
+                            <div className="mb-2 text-[10px] font-medium uppercase tracking-wider text-zinc-400">
+                                What produced it
+                            </div>
+                            <div className="space-y-2">
+                                <CodeBlock title="shell" code={INSTALL} />
+                                <CodeBlock title="hello.tsx" code={HELLO_WORLD} />
+                            </div>
+                            <p className="mt-3 text-[11px] text-zinc-400">
+                                Add a builder key when you&rsquo;re ready to take
+                                fees.
+                            </p>
+                        </div>
                     </div>
 
-                    {/* The hinge: the demo you just used, in three lines. */}
-                    <div>
-                        <div className="mb-2 text-[10px] font-medium uppercase tracking-wider text-zinc-400">
-                            What produced it
-                        </div>
-                        <div className="space-y-2">
-                            <CodeBlock title="shell" code={INSTALL} />
-                            <CodeBlock title="hello.tsx" code={HELLO_WORLD} />
-                        </div>
-                        <p className="mt-3 text-[11px] text-zinc-400">
-                            Add a builder key when you&rsquo;re ready to take
-                            fees.
-                        </p>
-                    </div>
-                </div>
-
-                {/* Soft signals — we just launched, so this is presence, not
-                    bragging. Swap the handles below for the real ones. */}
-                <div className="max-w-2xl lg:max-w-none">
+                    {/* Soft signals — we just launched, so this is presence, not
+                        bragging. Swap the handles below for the real ones. */}
                     <SoftSignals />
                 </div>
             </div>

@@ -63,79 +63,87 @@ export function GoLive() {
 
             <section className="border-b border-zinc-200/70">
                 <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-32">
-                    <p
-                        className="mb-6 font-mono text-[11px] uppercase tracking-[0.18em]"
-                        style={{ color: '#a85a32' }}
-                    >
-                        ↳ ship it
-                    </p>
-                    <h1 className="max-w-4xl text-balance text-4xl font-semibold tracking-tight text-zinc-950 sm:text-6xl">
-                        Go live in three steps.
-                    </h1>
-                    <p className="mt-6 max-w-2xl text-sm text-zinc-500">
-                        You&rsquo;ve cloned the repo or installed the package.
-                        Now you just need a key and a fee. Should take about
-                        five minutes.
-                    </p>
+                    <div className="mx-auto max-w-2xl lg:max-w-none">
+                        <p
+                            className="mb-6 font-mono text-[11px] uppercase tracking-[0.18em]"
+                            style={{ color: '#a85a32' }}
+                        >
+                            ↳ ship it
+                        </p>
+                        <h1 className="max-w-4xl text-balance text-4xl font-semibold tracking-tight text-zinc-950 sm:text-6xl">
+                            Go live in three steps.
+                        </h1>
+                        <p className="mt-6 text-sm text-zinc-500">
+                            You&rsquo;ve cloned the repo or installed the package.
+                            Now you just need a key and a fee. Should take about
+                            five minutes.
+                        </p>
+                    </div>
                 </div>
             </section>
 
             <section className="border-b border-zinc-200/70">
-                <ol className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-32">
-                    {STEPS.map((step, i) => (
-                        <StepRow
-                            key={step.number}
-                            step={step}
-                            last={i === STEPS.length - 1}
-                        />
-                    ))}
-                </ol>
+                <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-32">
+                    <div className="mx-auto max-w-2xl lg:max-w-none">
+                        <ol>
+                            {STEPS.map((step, i) => (
+                                <StepRow
+                                    key={step.number}
+                                    step={step}
+                                    last={i === STEPS.length - 1}
+                                />
+                            ))}
+                        </ol>
+                    </div>
+                </div>
             </section>
 
             {/* Tail — what unlocks once they're live. */}
             <section className="border-b border-zinc-200/70">
                 <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-32">
-                    <p
-                        className="mb-4 font-mono text-[11px] uppercase tracking-[0.18em]"
-                        style={{ color: '#a85a32' }}
-                    >
-                        once you&rsquo;re live
-                    </p>
-                    <h2 className="max-w-3xl text-2xl font-semibold tracking-tight sm:text-3xl md:text-4xl">
-                        Every fill credits your account.
-                    </h2>
-                    <div className="mt-10 grid gap-px overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-200 sm:grid-cols-3">
-                        <Outcome
-                            eyebrow="fees"
-                            title="USDC.e on each fill"
-                            body="Builder fee accrues to your PMXT balance in real time. Withdrawable from the dashboard."
-                        />
-                        <Outcome
-                            eyebrow="attribution"
-                            title="Per-order receipts"
-                            body="Every routed order tags your key. The dashboard shows source widget, venue, and outcome."
-                        />
-                        <Outcome
-                            eyebrow="control"
-                            title="Change the fee any time"
-                            body="Bps is a single number in the dashboard. No redeploy, no key rotation."
-                        />
-                    </div>
+                    <div className="mx-auto max-w-2xl lg:max-w-none">
+                        <p
+                            className="mb-4 font-mono text-[11px] uppercase tracking-[0.18em]"
+                            style={{ color: '#a85a32' }}
+                        >
+                            once you&rsquo;re live
+                        </p>
+                        <h2 className="max-w-3xl text-2xl font-semibold tracking-tight sm:text-3xl md:text-4xl">
+                            Every fill credits your account.
+                        </h2>
+                        <div className="mt-10 grid gap-px overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-200 sm:grid-cols-3">
+                            <Outcome
+                                eyebrow="fees"
+                                title="USDC.e on each fill"
+                                body="Builder fee accrues to your PMXT balance in real time. Withdrawable from the dashboard."
+                            />
+                            <Outcome
+                                eyebrow="attribution"
+                                title="Per-order receipts"
+                                body="Every routed order tags your key. The dashboard shows source widget, venue, and outcome."
+                            />
+                            <Outcome
+                                eyebrow="control"
+                                title="Change the fee any time"
+                                body="Bps is a single number in the dashboard. No redeploy, no key rotation."
+                            />
+                        </div>
 
-                    <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-                        <Link
-                            href="/widgets"
-                            className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-zinc-950 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
-                        >
-                            Back to the widgets
-                            <span aria-hidden="true">→</span>
-                        </Link>
-                        <a
-                            href="https://docs.pmxt.dev/builders"
-                            className="text-zinc-600 underline-offset-4 hover:text-zinc-950 hover:underline"
-                        >
-                            Full builder docs
-                        </a>
+                        <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+                            <Link
+                                href="/widgets"
+                                className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-zinc-950 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
+                            >
+                                Back to the widgets
+                                <span aria-hidden="true">→</span>
+                            </Link>
+                            <a
+                                href="https://docs.pmxt.dev/builders"
+                                className="text-zinc-600 underline-offset-4 hover:text-zinc-950 hover:underline"
+                            >
+                                Full builder docs
+                            </a>
+                        </div>
                     </div>
                 </div>
             </section>
