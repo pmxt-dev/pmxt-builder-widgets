@@ -50,8 +50,9 @@ export function SectionHero() {
                     </h1>
                     <p className="mt-6 max-w-2xl text-sm text-zinc-500 dark:text-zinc-400">
                         Your audience trades on your site instead of leaving for
-                        Polymarket. You take the spread; we route the orders across
-                        every venue worth trading.
+                        Polymarket. One stablecoin across every venue,
+                        non-custodial — you take the spread, we route the
+                        orders.
                     </p>
 
                     {/* Below lg the grid stacks; cap its width so the widget +
