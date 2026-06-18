@@ -137,19 +137,29 @@ export function MatchedMarketRow({
     const panelId = useId();
 
     // Selected-venue legs with a live price; dead listings drop.
-    const legs = cluster.markets
-        .filter((market) => venues.includes(market.sourceExchange))
-        .map((market) => {
-            const outcome = marketYes(market) ?? market.outcomes[0];
-            return outcome && outcome.price > 0
-                ? {
-                      market,
-                      outcome,
-                      tradable: isTradableVenue(market.sourceExchange),
-                  }
-                : null;
-        })
-        .filter((l): l is NonNullable<typeof l> => l !== null);
+    // ponytail: one leg per venue — if a cluster has multiple markets from
+    // the same venue (transitive match), keep the highest-24h-volume one.
+    const legs = Object.values(
+        cluster.markets
+            .filter((market) => venues.includes(market.sourceExchange))
+            .map((market) => {
+                const outcome = marketYes(market) ?? market.outcomes[0];
+                return outcome && outcome.price > 0
+                    ? {
+                          market,
+                          outcome,
+                          tradable: isTradableVenue(market.sourceExchange),
+                      }
+                    : null;
+            })
+            .filter((l): l is NonNullable<typeof l> => l !== null)
+            .reduce<Record<string, { market: PmxtMarket; outcome: PmxtOutcome; tradable: boolean }>>((acc, leg) => {
+                const v = leg.market.sourceExchange;
+                const prev = acc[v];
+                if (!prev || (leg.market.volume24h ?? 0) > (prev.market.volume24h ?? 0)) acc[v] = leg;
+                return acc;
+            }, {}),
+    );
     const tradableLegs = legs.filter((l) => l.tradable);
 
     // A compare row needs two live legs and at least one place to trade.
